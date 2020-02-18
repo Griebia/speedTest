@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <curl/curl.h>
+#include "curl.h"
 
 //so that name mangling doesn't mess up function names
 static char* concat(const char *s1, const char *s2)
@@ -17,17 +19,22 @@ static char* concat(const char *s1, const char *s2)
 }
 
 static int curl(lua_State *L){
-  const char *page = lua_tostring(L, 1);
-  FILE *fp;
-  char results[1035];
-  const char *command = concat(concat("/usr/bin/curl ",page),"| tac");
-  fp = popen(command, "r");
-  while(fgets(results,sizeof(results), fp) != NULL){
-    printf("%s",results);
-  }
+    const char *link = lua_tostring(L, 1);
+    testSpeed(link,L);
+    lua_pushstring(L,link);
+    return 3;
+
+//   
+//   FILE *fp;
+//   char results[1035];
+//   const char *command = concat(concat("/usr/bin/curl ",page),"| tac");
+//   fp = popen(command, "r");
+//   while(fgets(results,sizeof(results), fp) != NULL){
+//     printf("%s",results);
+//   }
   
-  lua_pushstring(L,page);
-  return 3;
+//   lua_pushstring(L,page);
+//   return 3;
 }
 
 

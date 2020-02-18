@@ -1,0 +1,9 @@
+To do:
+
+Think what kind of information is needed for the speed test
+Make it so that the curd.c be added to the lua wrapper to be executed
+Think about how I can grab the information better to lua
+Think how to get the location and select the server form close to the place of choosing
+Make an automatic server selecter
+
+https://ipapi.co/api/#location-of-a-specific-ip
