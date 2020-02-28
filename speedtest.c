@@ -1,41 +1,47 @@
 #include "speedtest.h"
 
+
 //Libary of commands for lua to recognise.
 static const struct luaL_Reg mylib [] = {
-  {"curl", curl},
-  {"get_body", get_body},
+  {"testspeed", testspeed_wrapper},
+  {"getbody", getbody_wrapper},
   {NULL, NULL}  /* sentinel */
 };
 
 //Curl command wrapper for testing the speed of upload or download.
-static int curl(lua_State *L){
-  //Gets the url.
+static int testspeed_wrapper(lua_State *L)
+{
   const char *url = lua_tostring(L, 1);
-  //Gets the test time.
   int timetest = lua_tonumber(L,2);
-  //Gets if it is true for upload or false.
-  int upload = lua_toboolean(L, 3);
-  testInternetSpeed(url, timetest, upload, L);
+  int upload = lua_toboolean(L, 3); 
+  int res = test_internet_speed(url, timetest, upload, L);
+  if(res > 0){
+    res = 0;
+  }
+  lua_pushboolean(L,res);
   lua_pushstring(L, url);
-  return 3;
+  return 2;
 }
 
 //Body get wrapper from a url.
-static int get_body(lua_State *L){
+static int getbody_wrapper(lua_State *L)
+{
   const char *url = lua_tostring(L, 1);
-  const char *body = getBody(url);
+  const char *body = get_body(url);
   lua_pushstring(L,body);
   return 1;
 }
 
 //Setting the libary to lua to recognise (The naming scheme should be the same as the made .so files).
-int luaopen_libspeedtest(lua_State *L){
+int luaopen_libspeedtest(lua_State *L)
+{
 	luaL_newlib(L, mylib);
 	return 1;
 }
 
-//Initialising a string
-void init_string(struct string *s) {
+//Initialising a string.
+void init_string(struct string *s) 
+{
   s->len = 0;
   s->ptr = malloc(s->len+1);
   if (s->ptr == NULL) {
@@ -45,8 +51,8 @@ void init_string(struct string *s) {
   s->ptr[0] = '\0';
 }
 
-//Writes to string struct information.
-size_t writeFunc(void *ptr, size_t size, size_t nmemb, struct string *s)
+//Writes to string struct the gotten data.
+size_t write_string(void *ptr, size_t size, size_t nmemb, struct string *s)
 {
   size_t new_len = s->len + size*nmemb;
   s->ptr = realloc(s->ptr, new_len+1);
@@ -62,83 +68,43 @@ size_t writeFunc(void *ptr, size_t size, size_t nmemb, struct string *s)
 }
 
 //Empty write for download speed test.
-size_t writeEmpty(void *buffer, size_t size, size_t nmemb, void *userp)
+size_t write_empty(void *buffer, size_t size, size_t nmemb, void *userp)
 {
    return size * nmemb;
 }
 
 //Get the body response form an URL
-const char* getBody(const char *URL){
+const char* get_body(const char *URL)
+{
   CURL *curl;
   CURLcode res;
-
   curl = curl_easy_init();
   if(curl) {
     struct string s;
     init_string(&s);
-
     curl_easy_setopt(curl, CURLOPT_URL, URL);
-
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeFunc);
-  
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-    
     res = curl_easy_perform(curl);
-
     curl_easy_cleanup(curl); 
-
     return s.ptr;
   }
 
   curl_easy_cleanup(curl); 
 }
 
-//Gets in /tmp size and determens what kind of size of file there should be made
-int getMaxSizeFile(){
-  struct statvfs fsdata;
-  int result = statvfs("/tmp/", &fsdata);
-  if (result != 0) {
-        fprintf(stderr, "Failed to stat: %s\n", "/tmp/");
-        exit(EXIT_FAILURE);
-  }
-
-  unsigned long free = fsdata.f_bfree * fsdata.f_frsize;
-  if(free > 5e+8){
-    return 5e+8;
-  }else{
-    return (int)(free - 2e+7);
-  }
-}
-
-//Creates a file that is a specific size.
-char* createFile(int size, char* path){
-  FILE *fp = fopen(path,"w");
-  if(fp == NULL){
-    exit(EXIT_FAILURE);
-  }
-  
-  fprintf(fp,"size_data=%d&test_type=upload&svrPort=80&svrPort=80&start=9999999999999&data=",size);
-  
-  for(int i = 0; i < size; i++){
-    fprintf(fp,"0");
-  }
-
-  fclose(fp);
-  return path;
-}
-
-/* this is how the CURLOPT_XFERINFOFUNCTION callback works */ 
-//This is the callback function for every call in download or upload
-static int callBack(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ultotal, curl_off_t ulnow)
+/* this is how the CURLOPT_XFERINFOFUNCTION  works */ 
+//This is the  function for every call in download or upload
+static int call_back(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ultotal, curl_off_t ulnow)
 {
   //Gets all of the information from the struct
-  struct myprogress *myp = (struct myprogress *)p;
+  struct speedtestprogress *myp = (struct speedtestprogress *)p;
   CURL *curl = myp->curl;
   TIMETYPE curtime = 0;
   lua_State *L = myp->L;
   curl_easy_getinfo(curl, TIMEOPT, &curtime);
 
-   
+  //printf("%f \n",curtime);
   if((curtime - myp->lastruntime) >= MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL) {
     myp->lastruntime = curtime;
   
@@ -148,7 +114,7 @@ static int callBack(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ulto
     curl_easy_getinfo(curl, CURLINFO_SPEED_UPLOAD_T, &uploadSpeed);
   
     //The function in lua that should be called.
-    lua_getglobal(L, "printSpeeds");
+    lua_getglobal(L, "writeData");
     //Return the arguments to the function.
     lua_pushnumber(L, (double)downloadSpeed);   /* push 1st argument */
     lua_pushnumber(L, (double)dlnow);   /* push 2nd argument */
@@ -170,14 +136,13 @@ static int callBack(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ulto
 }
 
 //Tests the internet speed by the given link adn if it is a download or an upload.
-int testInternetSpeed(const char *link, double testTime, int upload, lua_State *L){
+int test_internet_speed(const char *link, double testTime, int upload, lua_State *L)
+{
   CURL *curl = NULL;
   CURLcode res = CURLE_FAILED_INIT;
   FILE *fp = NULL;
-  char* path = "/tmp/uploadData";
   struct curl_slist *header_list = NULL;
-  struct myprogress prog;
-
+  struct speedtestprogress prog;
 
   //Initiating the curl.
   curl = curl_easy_init();
@@ -185,27 +150,19 @@ int testInternetSpeed(const char *link, double testTime, int upload, lua_State *
   if(curl) {
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     //Sets the xferinfo callback.
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, callBack);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, call_back);
     /* pass the struct pointer into the xferinfo function, note that this is
        an alias to CURLOPT_PROGRESSDATA */
-    //Sets the given data to the callback function.
+    //Sets the given data to the function.
     curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &prog);
     //If it is an upload test does also this.
     if(upload == 1){
-      //Generates a file in path with specific size.
-      if(access(path,F_OK)){
-        path = createFile(getMaxSizeFile(),path);
-      }
-      fp = fopen(path,"r");
+      fp = fopen("/dev/zero","r");
+
+      if(!fp)
+        goto cleanup;
       
-      if(!fp){
-        exit(EXIT_FAILURE);
-      }
-      
-      //Size of the file.
-      fseek(fp, 0L, SEEK_END);
-      int sz = ftell(fp);
-      rewind(fp);
+      double sz = 92233720368547758;
       
       //Adds POST to the curl.
       curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -222,7 +179,7 @@ int testInternetSpeed(const char *link, double testTime, int upload, lua_State *
       /* Include server headers in the output */
       curl_easy_setopt(curl, CURLOPT_HEADER, 1L);
     }
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeEmpty);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_empty);
     prog.lastruntime = 0;
     prog.curl = curl;
     prog.L = L;
@@ -237,16 +194,16 @@ int testInternetSpeed(const char *link, double testTime, int upload, lua_State *
     
     curl_easy_cleanup(curl);
 
-    if(curtime < prog.testtime)
-    {
-      testInternetSpeed(link, prog.testtime-curtime, upload, L);
+    if(curtime < prog.testtime){
+      test_internet_speed(link, prog.testtime-curtime, upload, L);
     }
+  }
 
-    if(fp != NULL){
-      fclose(fp);
-      remove(path);
-      fp = NULL;
-    }
-  } 
+  cleanup:
+  if(fp != NULL){
+    fclose(fp);
+    fp = NULL;
+  }
+
   return (int)res;
 }

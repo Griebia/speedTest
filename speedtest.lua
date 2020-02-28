@@ -1,5 +1,8 @@
+#!/usr/bin/lua
+
 local libspeedtest = require ("libspeedtest")
 local socket =  require("socket")
+
 local uploadServers = {
     "https://jp.testmy.net/uploader",
     "https://ny.testmy.net/uploader",
@@ -19,7 +22,14 @@ local downloadServers = {
     "http://mirror.wdc1.us.leaseweb.net/speedtest/1000mb.bin"
 }
 
+local downloadSelected;
+local uploadSelected;
+
+locationAPISelected = 1
 locationAPIs = {
+    "a",
+    "b",
+    "c",
     "https://ipapi.co/{ip}/json/",
     "extreme-ip-lookup.com/json/{ip}",
     "http://ip-api.com/json/{ip}",
@@ -27,31 +37,30 @@ locationAPIs = {
     "https://api.ipgeolocationapi.com/geolocate/{ip}"
 }
 
-locationAPISelected = 1
+warning = nil
+error = nil
+time = 3
+silent = false
 
-
--- Counts the lenght of an array.
-function tableLength(T)
-    local count = 0
-    for _ in pairs(T) do count = count + 1 end
-    return count
-end
 
 -- Gets the current ip address latitude and longitude.
 function getCurrentLocation()
     -- Getting the json file form https://api.myip.com with IP.
-    local body = libspeedtest.get_body("https://api.myip.com")
-    -- Getting the IP from the json file.
+    local body = libspeedtest.getbody("https://api.myip.com")
     ip = parseIP(body)
-    -- Gets the infomation about the ip address.
-    body = libspeedtest.get_body(string.gsub(locationAPIs[locationAPISelected],"{ip}",ip))
-    if (string.match(body,"lib") or string.match(body, "coords")) then
+    body = libspeedtest.getbody(string.gsub(locationAPIs[locationAPISelected],"{ip}",ip))
+    
+    if (string.match(body,"lat") or string.match(body, "coords")) then
         -- Gets from the retuned data the latitude and longitude.
         return parseLocation(body)
     end
-    print(body)
-    locationAPISelected = locationAPISelected + 1
-    return getCurrentLocation()
+
+    if(#locationAPIs > (locationAPISelected)) then
+        locationAPISelected = locationAPISelected + 1
+        return getCurrentLocation()
+    end
+
+    return false;
 end
 
 -- Returns IP address from th given json
@@ -68,38 +77,43 @@ function getLocation(link)
     local trimedLink = trimLink(link)
     -- Get the ip address of the site
     local client = socket.connect( trimedLink, 80 )
+    if(client == nil) then
+        warning = "To the url "..link.."we couldn't connect"
+        writeData(nil,nil,nil,nil)
+        return false
+    end
     local ip, port = client:getpeername()
     -- Gets the ip address information.
-    local body = libspeedtest.get_body(string.gsub(locationAPIs[locationAPISelected],"{ip}",ip))
-    
-    if (string.match(body,"lib") or string.match(body, "coords")) then
+    local body = libspeedtest.getbody(string.gsub(locationAPIs[locationAPISelected],"{ip}",ip))
+    if (string.match(body,"lat") or string.match(body, "coords")) then
         -- Gets from the retuned data the latitude and longitude.
         return parseLocation(body)
     end
 
-    locationAPISelected = locationAPISelected + 1
-    return getLocation(link)
+    if(#locationAPIs > (locationAPISelected)) then
+        locationAPISelected = locationAPISelected + 1
+        return getLocation(link)
+    end
+    return false;
 end
 
 -- Parse the latitude and longitude form given string.
 function parseLocation(body)
-    print(body)
+    local latitude
+    local longitude
     if string.match(body,"coords") then
         local i,j = string.find(body, "coords")
-        local _,_, lat1, lat2, lon1, lon2 = string.find(body,"(%d+).(%d+),(%d+).(%d+)",j)
+        local _,_, lat1, lat2, lon1, lon2 = string.find(body,"(%-?%d+).(%d+),(%-?%d+).(%d+)",j)
         latitude = lat1.."."..lat2
         longitude = lon1.."."..lon2
     else
         local i,j = string.find(body, "lat")
-        local _,_, integer, decimal = string.find(body,"(%d+).(%d+)",j)
-        print(integer,decimal)
-        local latitude = integer.."."..decimal
-        i,j = string.find(body, "lat")
-        _,_, integer, decimal = string.find(body,"(%d+).(%d+)",j)
-        local longitude = integer.."."..decimal
-        
+        local _,_,  integer, decimal = string.find(body,"(%-?%d+).(%d+)",j)
+        latitude = integer.."."..decimal
+        i,j = string.find(body, "lon")
+        _,_,  integer, decimal = string.find(body,"(%-?%d+).(%d+)",j)
+        longitude = integer.."."..decimal 
     end
-    print(latitude,longitude);
     return tonumber(latitude), tonumber(longitude)
 end
 
@@ -118,11 +132,11 @@ function trimLink(link)
     return cutLink
 end
 
--- Finds the closes server from the current location.
-function findCloses(servers)
+-- Finds the closest server from the current location.
+function findClosestServer(servers)
     local server;
     local lat1, lon1 = getCurrentLocation()
-    local count = tableLength(servers)
+    local count = #servers
     local minDistance = 999999999999
     for i=1,count,1 do 
         local lat2, lon2 = getLocation(servers[i]);
@@ -148,24 +162,7 @@ function calculateDistance(lat1,lon1,lat2,lon2)
     return d
 end
 
-function printSpeeds (downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
-    if currentDownloaded > 0 then
-        print("Avarage download speed is "..convertBytes(downloadSpeed).."/s Current downloaded "..convertBytes(currentDownloaded))
-    else
-        print("Avarage upload speed is "..convertBytes(uploadSpeed).."/s Current uploaded "..convertBytes(currentUpload)) 
-    end
-    writeToFile(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
-    return true
-end
-
-function writeToFile(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
-    if currentDownloaded > 0 then
-        file:write("Avarage download speed is "..convertBytes(downloadSpeed).."/s Current downloaded "..convertBytes(currentDownloaded).."\n")
-    else
-        file:write("Avarage upload speed is "..convertBytes(uploadSpeed).."/s Current uploaded "..convertBytes(currentUpload).."\n")
-    end
-end
-
+-- Changes bytes to other numbers.
 function convertBytes(bytes)
     if bytes > 1000000000 then 
         return (bytes/1000000000).."gb"
@@ -177,28 +174,168 @@ function convertBytes(bytes)
     return bytes.."b"
 end
 
-
-
-if(#arg == 1) then
-    local uploadServer = findCloses(uploadServers)
-    local downloadServer = findCloses(downloadServers)
-    print(uploadServer)
-    print(downloadServer)
+--Writes by choosen paramters to specific places
+function writeData(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    if silent then
+        writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    else
+        writeToConsole(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    end
+    if(warning ~= nil) then
+        warning = nil
+    end
+    if(error ~= nil) then
+        error = nil
+    end
 end
 
--- file = io.open("speedtest.txt","w")
+--Writes to console and JSON file
+function writeToConsole (downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    if(warning ~= nil) then
+        print("Warning: "..warning)
+    end
+    if(error ~= nil) then
+        print("Error: "..error)
+    end
+    if tonumber(currentDownloaded) then
+        if currentDownloaded > 0 then
+            print("Average download speed is "..convertBytes(downloadSpeed).."/s Current downloaded "..convertBytes(currentDownloaded))
+        else
+            print("Average upload speed is "..convertBytes(uploadSpeed).."/s Current uploaded "..convertBytes(currentUpload)) 
+        end 
+    end
+    writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    return true
+end
 
--- local selected = 1  
+--Writes to JSON file all of the information
+function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    local file = io.open("speedtest.json","w")
+    file:write("{\n")
+    if tonumber(downloadSpeed) then
+        file:write("\t\"avgDownlaodSpeed\":"..downloadSpeed.."\n")
+    end
+    if tonumber(currentDownloaded) then
+        file:write("\t\"downloaded\":"..currentDownloaded.."\n")
+    end
+    if tonumber(uploadSpeed) then
+        file:write("\t\"avgUploadSpeed\":"..uploadSpeed.."\n")
+    end
+    if tonumber(uploadSpeed) then
+        file:write("\t\"uploaded\":"..uploadSpeed.."\n")
+    end
+    if(error ~= nil) then
+        file:write("\t\"error\":\""..error.."\"\n")
+    end
+    if(warning ~= nil) then
+        file:write("\t\"warning\":\""..warning.."\"\n")
+    end
+    file:write("}")
+    file:close()
+end
 
--- print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
--- local info = io.read();
--- if info == "y" or info == "Y" then
---     libspeedtest.curl("http://mirror.nl.leaseweb.net/speedtest/1000mb.bin",10,false)
---         print()
---     libspeedtest.curl("https://de.testmy.net/uploader",10,true)
--- end
+--Acts by the given flag from avg
+function flagCheck(num,flag)
+    local tmp = 0;
+    if flag == "--help" then
+        print("usage: speedtest [options]\nAvailible options are:\n--help      shows usage of file\n-s          set silent mode\n-d [url]    set download server\n-u [url]    set upload server\n")
+    elseif flag == "-s" then 
+        silent = true;
+    elseif flag == "-d" then
+        downloadSelected = avg[num+1]
+        if downloadSelected == nil then
+            warning = "The download link was not set correctly"
+            writeData(nil,nil,nil,nil)
+        end
+        if socket.connect(downloadSelected,80) == nil then
+            warning = "The download link was not set correctly"
+            writeData(nil,nil,nil,nil)
+        end
+        tmp = 1
+    elseif flag == "-u" then 
+        uploadSelected = arg[num+1]
+        if uploadSelected == nil then
+            warning = "The upload link was not set correctly"
+            writeData(nil,nil,nil,nil)
+        end
+        if socket.connect(downloadSelected,80) == nil then
+            warning = "The upload link was not set correctly"
+            writeData(nil,nil,nil,nil)
+        end
+        tmp = 1
+    elseif flag == "-t" then
+        if arg[num+1] ~= nil then
+            time = arg[num+1]
+            tmp = 1
+        else
+            warning = "The time was not set correctly"
+            writeData(nil,nil,nil,nil)
+        end
+    else
+        print("The is no such option as "..flag)
+    end
+    return tmp
+end
 
--- file:close()
+--Checks if there is a any added flags and does the accordingly 
+if(#arg > 0) then
+    local i = 1
+    while #arg >= i do
+        local tmp = flagCheck(i,arg[i])
+        i = i + tmp
+        i = i + 1
+    end
+end
+
+--Looks for internet connection
+if socket.connect("www.google.com",80) == nil then
+    error = "An internet connection is required to use this application."
+    writeData(nil, nil, nil, nil)
+    os.exit()
+end
+
+--If the dowload or upload server is already selected then find closes
+if downloadSelected == nil then
+    if not silent then
+        print("Looking the best server to test download..")
+    end
+    downloadSelected = findClosestServer(downloadServers)
+end
+
+if uploadSelected == nil then
+    if not silent then
+        print("Looking the best server to test upload..")
+    end
+    uploadSelected = findClosestServer(uploadServers)
+end
+-- If the server was not able to determine which of the servers is closest puts random servers and a warning. 
+if(not uploadSelected or not downloadSelected) then
+    warning = "We could not determine the closes server to you. Random servers was picked."
+    downloadSelected = downloadServers[math.random(1,#downloadServers)]
+    uploadSelected = uploadServers[math.random(1,#uploadServers)]
+end
+
+if not silent then
+    print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
+    local info = io.read();
+    if not (info == "y") and not (info == "Y") then
+        os.exit()
+    end
+end
+
+isError, res = libspeedtest.testspeed(downloadSelected,time,false)
+if isError then
+    error = res
+    writeData(nil,nil,nil,nil)
+    os.exit()
+end 
+isError, res = libspeedtest.testspeed(uploadSelected,1000,true)
+if isError then
+    error = res
+    writeData(nil,nil,nil,nil)
+    os.exit()
+end
+
 --gcc luaWrapper.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
---gcc curlWrap.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
+--gcc speedtest.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
 --/usr/lib/lua/luci/

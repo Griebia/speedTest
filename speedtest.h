@@ -3,8 +3,6 @@
 #include <curl/curl.h>
 #include <math.h>
 #include <time.h>
-#include <sys/statvfs.h>
-#include <unistd.h>
 #include <string.h>
 #include <lua5.2/lua.h>
 #include <lua5.2/lualib.h>
@@ -41,24 +39,19 @@ struct string {
   size_t len;
 };
 
-struct myprogress {
+struct speedtestprogress {
   TIMETYPE lastruntime; /* type depends on version, see above */
   TIMETYPE testtime; 
   CURL *curl;
   lua_State *L;
 };
 
-static int curl(lua_State *L);
-static int get_body(lua_State *L);
-static int callBack(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ultotal, curl_off_t ulnow);
-static int older_progress(void *p,double dltotal, double dlnow,double ultotal, double ulnow);
+static int testspeed_wrapper(lua_State *L);
+static int getbody_wrapper(lua_State *L);
+static int call_back(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ultotal, curl_off_t ulnow);
 int luaopen_libspeedtest(lua_State *L);
-int testInternetSpeed(const char *link, double testTime, int upload, lua_State *L);
-int getMaxSizeFile();
-const char* getBody(const char *link);
-char* createFile(int size, char* path);
+int test_internet_speed(const char *link, double testTime, int upload, lua_State *L);
+const char* get_body(const char *link);
 void init_string(struct string *s);
-size_t writeFunc(void *ptr, size_t size, size_t nmemb, struct string *s);
-size_t writeEmpty(void *buffer, size_t size, size_t nmemb, void *userp);
-
-
+size_t write_string(void *ptr, size_t size, size_t nmemb, struct string *s);
+size_t write_empty(void *buffer, size_t size, size_t nmemb, void *userp);

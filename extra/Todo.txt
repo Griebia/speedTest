@@ -1,0 +1,29 @@
+To do:
+
+Think what kind of information is needed for the speed test
+Make it so that the curd.c be added to the lua wrapper to be executed
+
+https://ipapi.co/api/#location-of-a-specific-ip
+
+--gcc luaWrapper.c -shared -o mylib.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
+--gcc speedtest.c -shared -o mylib.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
+--/usr/lib/lua/luci/
+
+      /* retrieve result */
+      if (!lua_isnumber(L, -1))
+        perror("function `f' must return a number");
+      double z = lua_tonumber(L, -1);
+      lua_pop(L, 1);  /* pop returned value */
+
+scp build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/libspeedtest-1/ipkg-arm_cortex-a7_neon-vfpv4/libspeedtest/usr/lib/lua/luci/libspeedtest.so root@192.168.1.1:/usr/lib/lua/luci/
+
+curl -T ./newfile http://filebin.net/0j9kxno74b0lsv0s > info.txt
+
+
+Warning:
+
+Error: 
+The URL is not valid.
+
+info is not y
+info is not Y
