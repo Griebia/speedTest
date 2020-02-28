@@ -271,6 +271,14 @@ function flagCheck(num,flag)
             warning = "The time was not set correctly"
             writeData(nil,nil,nil,nil)
         end
+    elseif flag == "-t" then
+        if arg[num+1] ~= nil then
+            time = arg[num+1]
+            tmp = 1
+        else
+            warning = "The time was not set correctly"
+            writeData(nil,nil,nil,nil)
+        end
     else
         print("The is no such option as "..flag)
     end
@@ -329,7 +337,7 @@ if isError then
     writeData(nil,nil,nil,nil)
     os.exit()
 end 
-isError, res = libspeedtest.testspeed(uploadSelected,1000,true)
+isError, res = libspeedtest.testspeed("http://speed-kaunas.telia.lt:8080/speedtest/upload.php",1000,true)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)

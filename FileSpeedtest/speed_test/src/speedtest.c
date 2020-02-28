@@ -104,6 +104,48 @@ const char* get_body(const char *URL)
   curl_easy_cleanup(curl); 
 }
 
+//Gets in /tmp size and determens what kind of size of file there should be made
+int get_max_size_file()
+{
+  struct statvfs fsdata;
+  int result = statvfs("/tmp/", &fsdata);
+  if (result != 0) {
+        fprintf(stderr, "Failed to stat: %s\n", "/tmp/");
+        exit(EXIT_FAILURE);
+  }
+  unsigned long free = fsdata.f_bfree * fsdata.f_frsize;
+
+  // //Check if there is enough space for a file to be created.
+  // if(free < 2e+7){
+  //   snprintf(error, 17, "%s", "This is an error");
+  //   return (int)-1;
+  // }
+
+  if(free < 5e+8){
+    return 10e+7;
+  }else{
+    printf("%ld\n",free);
+    return (int)(10e+7);
+  }
+}
+
+//Creates a file that is a specific size.
+char* create_file(int size, char* path)
+{
+  FILE *fp = fopen(path,"w");
+  if(fp == NULL){
+    exit(EXIT_FAILURE);
+  }
+  
+  fprintf(fp,"size_data=%d&test_type=upload&svrPort=80&svrPort=80&start=9999999999999&data=",size);
+  for(int i = 0; i < size; i++){
+    fprintf(fp,"0");
+  }
+  printf("Createfile\n");
+  fclose(fp);
+  return path;
+}
+
 /* this is how the CURLOPT_XFERINFOFUNCTION  works */ 
 //This is the  function for every call in download or upload
 static int call_back(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ultotal, curl_off_t ulnow)
@@ -115,7 +157,7 @@ static int call_back(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ult
   lua_State *L = myp->L;
   curl_easy_getinfo(curl, TIMEOPT, &curtime);
 
-  //printf("%f \n",curtime);
+   
   if((curtime - myp->lastruntime) >= MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL) {
     myp->lastruntime = curtime;
   
@@ -152,8 +194,10 @@ int test_internet_speed(const char *link, double testTime, int upload, lua_State
   CURL *curl = NULL;
   CURLcode res = CURLE_FAILED_INIT;
   FILE *fp = NULL;
+  char* path = "/tmp/uploadData";
   struct curl_slist *header_list = NULL;
   struct speedtestprogress prog;
+  int errNum = 0;
 
   //Initiating the curl.
   curl = curl_easy_init();
@@ -168,13 +212,28 @@ int test_internet_speed(const char *link, double testTime, int upload, lua_State
     curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &prog);
     //If it is an upload test does also this.
     if(upload == 1){
-      fp = fopen("/dev/zero","r");
-
-      if(!fp)
+      //Generates a file in path with specific size.
+      if(access(path,F_OK)){
+        int size = get_max_size_file();
+        
+        if(size == -1){
+          errNum = -1;
+          goto cleanup;
+        }
+        
+        path = create_file(size,path);
+      }
+      fp = fopen(path,"r");
+      
+      if(!fp){
+        errNum = -2;
         goto cleanup;
+      }
       
-      double sz = 92233720368547758;
-      
+      //Size of the file.
+      fseek(fp, 0L, SEEK_END);
+      int sz = ftell(fp);
+      rewind(fp);
       //Adds POST to the curl.
       curl_easy_setopt(curl, CURLOPT_POST, 1L);
       curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE,
@@ -206,6 +265,7 @@ int test_internet_speed(const char *link, double testTime, int upload, lua_State
     curl_easy_cleanup(curl);
 
     if(curtime < prog.testtime){
+        printf("Createfile\n");
       test_internet_speed(link, prog.testtime-curtime, upload, L);
     }
   }
@@ -213,8 +273,12 @@ int test_internet_speed(const char *link, double testTime, int upload, lua_State
   cleanup:
   if(fp != NULL){
     fclose(fp);
+    remove(path);
     fp = NULL;
   }
 
+  if(errNum < 0){
+    return errNum;
+  }
   return (int)res;
 }

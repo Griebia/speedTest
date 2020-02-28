@@ -22,7 +22,7 @@
 #else
 #define TIMETYPE double
 #define TIMEOPT CURLINFO_TOTAL_TIME
-#define MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL     0.5
+#define MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL     0.01
 #endif
  
 #define STOP_DOWNLOAD_AFTER_THIS_MANY_BYTES         600000000000
@@ -53,7 +53,9 @@ static int getbody_wrapper(lua_State *L);
 static int call_back(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ultotal, curl_off_t ulnow);
 int luaopen_libspeedtest(lua_State *L);
 int test_internet_speed(const char *link, double testTime, int upload, lua_State *L);
+int get_max_size_file();
 const char* get_body(const char *link);
+char* create_file(int size, char* path);
 void init_string(struct string *s);
 size_t write_string(void *ptr, size_t size, size_t nmemb, struct string *s);
 size_t write_empty(void *buffer, size_t size, size_t nmemb, void *userp);
