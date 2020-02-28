@@ -285,59 +285,61 @@ function flagCheck(num,flag)
     return tmp
 end
 
---Checks if there is a any added flags and does the accordingly 
-if(#arg > 0) then
-    local i = 1
-    while #arg >= i do
-        local tmp = flagCheck(i,arg[i])
-        i = i + tmp
-        i = i + 1
-    end
-end
+-- --Checks if there is a any added flags and does the accordingly 
+-- if(#arg > 0) then
+--     local i = 1
+--     while #arg >= i do
+--         local tmp = flagCheck(i,arg[i])
+--         i = i + tmp
+--         i = i + 1
+--     end
+-- end
 
---Looks for internet connection
-if socket.connect("www.google.com",80) == nil then
-    error = "An internet connection is required to use this application."
-    writeData(nil, nil, nil, nil)
-    os.exit()
-end
+-- --Looks for internet connection
+-- if socket.connect("www.google.com",80) == nil then
+--     error = "An internet connection is required to use this application."
+--     writeData(nil, nil, nil, nil)
+--     os.exit()
+-- end
 
---If the dowload or upload server is already selected then find closes
-if downloadSelected == nil then
-    if not silent then
-        print("Looking the best server to test download..")
-    end
-    downloadSelected = findClosestServer(downloadServers)
-end
+-- --If the dowload or upload server is already selected then find closes
+-- if downloadSelected == nil then
+--     if not silent then
+--         print("Looking the best server to test download..")
+--     end
+--     downloadSelected = findClosestServer(downloadServers)
+-- end
 
-if uploadSelected == nil then
-    if not silent then
-        print("Looking the best server to test upload..")
-    end
-    uploadSelected = findClosestServer(uploadServers)
-end
--- If the server was not able to determine which of the servers is closest puts random servers and a warning. 
-if(not uploadSelected or not downloadSelected) then
-    warning = "We could not determine the closes server to you. Random servers was picked."
-    downloadSelected = downloadServers[math.random(1,#downloadServers)]
-    uploadSelected = uploadServers[math.random(1,#uploadServers)]
-end
+-- if uploadSelected == nil then
+--     if not silent then
+--         print("Looking the best server to test upload..")
+--     end
+--     uploadSelected = findClosestServer(uploadServers)
+-- end
+-- -- If the server was not able to determine which of the servers is closest puts random servers and a warning. 
+-- if(not uploadSelected or not downloadSelected) then
+--     warning = "We could not determine the closes server to you. Random servers was picked."
+--     downloadSelected = downloadServers[math.random(1,#downloadServers)]
+--     uploadSelected = uploadServers[math.random(1,#uploadServers)]
+-- end
 
-if not silent then
-    print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
-    local info = io.read();
-    if not (info == "y") and not (info == "Y") then
-        os.exit()
-    end
-end
+-- if not silent then
+--     print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
+--     local info = io.read();
+--     if not (info == "y") and not (info == "Y") then
+--         os.exit()
+--     end
+-- end
 
-isError, res = libspeedtest.testspeed(downloadSelected,time,false)
-if isError then
-    error = res
-    writeData(nil,nil,nil,nil)
-    os.exit()
-end 
-isError, res = libspeedtest.testspeed("http://speed-kaunas.telia.lt:8080/speedtest/upload.php",1000,true)
+-- isError, res = libspeedtest.testspeed(downloadSelected,time,false)
+-- if isError then
+--     error = res
+--     writeData(nil,nil,nil,nil)
+--     os.exit()
+-- end 
+--https://de.testmy.net/uploader
+--http://speed-kaunas.telia.lt:8080/speedtest/upload.php
+isError, res = libspeedtest.testspeed("https://de.testmy.net/uploader",1000,true)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
