@@ -3,28 +3,6 @@
 local libspeedtest = require ("libspeedtest")
 local socket =  require("socket")
 
-local uploadServers = {
-    "https://jp.testmy.net/uploader",
-    "https://ny.testmy.net/uploader",
-    "https://de.testmy.net/uploader",
-    "https://sg.testmy.net/uploader",
-    "https://au.testmy.net/uploader",
-    "https://in.testmy.net/uploader",
-    "https://lax.testmy.net/uploader",
-    "https://uk.testmy.net/uploader"
-}
-
-local downloadServers = {
-    "http://speedtest.tele2.net/10GB.zip",
-    "http://mirror.nl.leaseweb.net/speedtest/1000mb.bin",
-    "http://speedtest.as5577.net/1000mb.bin",
-    "http://mirror.sfo12.us.leaseweb.net/speedtest/1000mb.bin",
-    "http://mirror.wdc1.us.leaseweb.net/speedtest/1000mb.bin"
-}
-
-local downloadSelected;
-local uploadSelected;
-
 locationAPISelected = 1
 locationAPIs = {
     "a",
@@ -37,11 +15,11 @@ locationAPIs = {
     "https://api.ipgeolocationapi.com/geolocate/{ip}"
 }
 
+server = nil
 warning = nil
 error = nil
 time = 3
 silent = false
-
 
 -- Gets the current ip address latitude and longitude.
 function getCurrentLocation()
@@ -117,6 +95,13 @@ function parseLocation(body)
     return tonumber(latitude), tonumber(longitude)
 end
 
+
+function parseURL(body)
+    local i,j = string.find(body,"url=\"")
+    local i = string.find(body,"\"",j+1)
+    return string.sub(body, j+1, i-1)
+end
+
 --Trims the link by removing https:// or http:// and removing everything from the link that goes from / character.
 function trimLink(link)
     local cutlink = link
@@ -152,6 +137,28 @@ function findClosestServer(servers)
    return server
 end
 
+
+
+function findClosestServer(url, latURL, lonURL)
+    local server;
+    local lat1, lon1 = getCurrentLocation()
+    local count = #servers
+    local minDistance = 999999999999
+    for i=1,count,1 do 
+        local lat2, lon2 = getLocation(servers[i]);
+        if(lat2 == nil or lon2 == nil )then
+            return
+        end
+        local dist = calculateDistance(lat1,lon1,lat2,lon2)
+        if(minDistance > dist) then
+            minDistance = dist
+            server = servers[i]
+        end
+    end
+   return server
+end
+
+
 -- Calculates the distances between 2 positions.
 function calculateDistance(lat1,lon1,lat2,lon2)
     local R = 6371e3
@@ -163,15 +170,26 @@ function calculateDistance(lat1,lon1,lat2,lon2)
 end
 
 -- Changes bytes to other numbers.
-function convertBytes(bytes)
-    if bytes > 1000000000 then 
-        return (bytes/1000000000).."gb"
-    elseif bytes > 1000000 then
-        return (bytes/1000000).."mb"
-    elseif bytes > 1000 then
-        return (bytes/1000).."kb"
+function convertBytes(bytes,mbps)
+    if mbps then
+        if bytes > 1000000000 then 
+            return string.format("%.3f",(bytes/125000000)).."gbps"
+        elseif bytes > 1000000 then
+            return string.format("%.3f",(bytes/125000)).."mbps"
+        elseif bytes > 1000 then
+            return string.format("%.3f",(bytes/125)).."kbps"
+        end
+        return bytes.."bps"
+    else
+        if bytes > (1024*1024*1024) then 
+            return string.format("%.3f",(bytes/(1024*1024*1024))).."GB"
+        elseif bytes > (1024*1024) then
+            return string.format("%.3f",bytes/(1024*1024)).."MB"
+        elseif bytes > 1024 then
+            return string.format("%.3f",(bytes/1024)).."KB"
+        end
+        return bytes.."B"
     end
-    return bytes.."b"
 end
 
 --Writes by choosen paramters to specific places
@@ -199,9 +217,9 @@ function writeToConsole (downloadSpeed, currentDownloaded,uploadSpeed,currentUpl
     end
     if tonumber(currentDownloaded) then
         if currentDownloaded > 0 then
-            print("Average download speed is "..convertBytes(downloadSpeed).."/s Current downloaded "..convertBytes(currentDownloaded))
+            print("Average download speed is "..convertBytes(downloadSpeed,true).." Current downloaded "..convertBytes(currentDownloaded, false))
         else
-            print("Average upload speed is "..convertBytes(uploadSpeed).."/s Current uploaded "..convertBytes(currentUpload)) 
+            print("Average upload speed is "..convertBytes(uploadSpeed,true).." Current uploaded "..convertBytes(currentUpload, false)) 
         end 
     end
     writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
@@ -238,28 +256,17 @@ end
 function flagCheck(num,flag)
     local tmp = 0;
     if flag == "--help" then
-        print("usage: speedtest [options]\nAvailible options are:\n--help      shows usage of file\n-s          set silent mode\n-d [url]    set download server\n-u [url]    set upload server\n")
+        print("usage: speedtest [options]\nAvailible options are:\n--help      shows usage of file\n-s          set silent mode\n-u [url]    set server\n-t [time]    set test time\n")
     elseif flag == "-s" then 
         silent = true;
-    elseif flag == "-d" then
-        downloadSelected = avg[num+1]
-        if downloadSelected == nil then
-            warning = "The download link was not set correctly"
+    elseif flag == "-u" then
+        server = arg[num+1]
+        if server == nil then
+            warning = "The link was not set correctly"
             writeData(nil,nil,nil,nil)
         end
-        if socket.connect(downloadSelected,80) == nil then
-            warning = "The download link was not set correctly"
-            writeData(nil,nil,nil,nil)
-        end
-        tmp = 1
-    elseif flag == "-u" then 
-        uploadSelected = arg[num+1]
-        if uploadSelected == nil then
-            warning = "The upload link was not set correctly"
-            writeData(nil,nil,nil,nil)
-        end
-        if socket.connect(downloadSelected,80) == nil then
-            warning = "The upload link was not set correctly"
+        if socket.connect(server,80) == nil then
+            warning = "There was no connection to the given URL"
             writeData(nil,nil,nil,nil)
         end
         tmp = 1
@@ -285,61 +292,86 @@ function flagCheck(num,flag)
     return tmp
 end
 
--- --Checks if there is a any added flags and does the accordingly 
--- if(#arg > 0) then
---     local i = 1
---     while #arg >= i do
---         local tmp = flagCheck(i,arg[i])
---         i = i + tmp
---         i = i + 1
---     end
--- end
+function getClosestServer()
+    body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
+    local lat1, lon1 = getCurrentLocation()
+    local i = 1
+    local server
+    local minDistance = -1
+    for line in magiclines(body) do
+        if string.match(line,"lat") then
+            lat2, lon2 = parseLocation(line)
+            if(lat2 == nil or lon2 == nil )then
+                return
+            end
+            local dist = calculateDistance(lat1,lon1,lat2,lon2)
+            if(minDistance > dist or minDistance == -1) then
+                minDistance = dist
+                server = parseURL(line)
+            end
+        end
+    end
+    return trimLink(server);
+end
 
--- --Looks for internet connection
--- if socket.connect("www.google.com",80) == nil then
---     error = "An internet connection is required to use this application."
---     writeData(nil, nil, nil, nil)
---     os.exit()
--- end
+function magiclines(s)
+    if s:sub(-1)~="\n" then s=s.."\n" end
+    return s:gmatch("(.-)\n")
+end
+--Checks if there is a any added flags and does the accordingly 
+if(#arg > 0) then
+    local i = 1
+    while #arg >= i do
+        local tmp = flagCheck(i,arg[i])
+        i = i + tmp
+        i = i + 1
+    end
+end
 
--- --If the dowload or upload server is already selected then find closes
--- if downloadSelected == nil then
---     if not silent then
---         print("Looking the best server to test download..")
---     end
---     downloadSelected = findClosestServer(downloadServers)
--- end
+--Looks for internet connection
+if socket.connect("www.google.com",80) == nil then
+    error = "An internet connection is required to use this application."
+    writeData(nil, nil, nil, nil)
+    os.exit()
+end
 
--- if uploadSelected == nil then
---     if not silent then
---         print("Looking the best server to test upload..")
---     end
---     uploadSelected = findClosestServer(uploadServers)
--- end
--- -- If the server was not able to determine which of the servers is closest puts random servers and a warning. 
--- if(not uploadSelected or not downloadSelected) then
---     warning = "We could not determine the closes server to you. Random servers was picked."
---     downloadSelected = downloadServers[math.random(1,#downloadServers)]
---     uploadSelected = uploadServers[math.random(1,#uploadServers)]
--- end
+if not silent then
+    print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
+    local info = io.read();
+    if not (info == "y") and not (info == "Y") then
+        os.exit()
+    end
+end
 
--- if not silent then
---     print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
---     local info = io.read();
---     if not (info == "y") and not (info == "Y") then
---         os.exit()
---     end
--- end
+if not server then
+    if not silent then
+        print("Finding closest server..")
+    end
+    server = getClosestServer();
+end
 
--- isError, res = libspeedtest.testspeed(downloadSelected,time,false)
--- if isError then
---     error = res
---     writeData(nil,nil,nil,nil)
---     os.exit()
--- end 
+if(not server) then
+    error = "We could not determine the closes server to you."
+    writeData(nil,nil,nil,nil)
+    os.exit()
+end
+
+if not silent then
+    print("The server that is selected: "..server)
+end
+
+isError, res = libspeedtest.testspeed(server.."/download", time, false)
+if isError then
+    error = res
+    writeData(nil,nil,nil,nil)
+    os.exit()
+end 
 --https://de.testmy.net/uploader
 --http://speed-kaunas.telia.lt:8080/speedtest/upload.php
-isError, res = libspeedtest.testspeed("https://de.testmy.net/uploader",1000,true)
+
+-- getServerData()
+print("Upload")
+isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", time, true)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
