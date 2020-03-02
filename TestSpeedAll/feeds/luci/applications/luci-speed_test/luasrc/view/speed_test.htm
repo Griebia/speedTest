@@ -1,0 +1,89 @@
+<%+header%>
+<style>
+    .needle{
+        border-top: 20px solid red;
+    }
+</style>                                                      
+<h1><%:Hello World%></h1>
+
+<canvas id="speedTest" width="500" height="500">
+<div class="needle"></div>
+Your browser does not support the canvas element.
+</canvas>
+<input type="number" value="0" onchange="OnDraw(this.value)">
+
+<script type="text/javascript">
+    var maxValue = 1000;
+    var canvas = document.getElementById("speedTest");
+    var ctx = canvas.getContext("2d");
+    var minAngle = Math.PI * 1.5;
+    var r = canvas.width/2 - 20;
+    
+    function readJson(){
+        var directory = '<%=build_url("admin/services/ajax/function")%>';
+        var xobj = new XMLHttpRequest();
+        xobj.overrideMimeType("application/json");
+        xobj.open('GET', directory, true); // Replace 'my_data' with the path to your file
+        xobj.onreadystatechange = function () {
+            if (xobj.readyState == 4 && xobj.status == "200") {
+                // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+                console.log(xobj.responseText);
+            }
+        };
+        xobj.send(null);  
+    }
+
+    function OnDraw(val = 0){
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var angle = Math.PI;
+        if(val < maxValue){
+            angle = Math.PI*val/maxValue;
+        }
+        drawGauge(angle);
+        drawPointer(angle);
+        writeSpeed();
+    }
+
+    function drawGauge(angle){
+        angle = Math.PI + angle;
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = "#0054A6";
+        
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, r, angle, 0);
+        ctx.globalAlpha = 0.2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, r, Math.PI, angle);
+        ctx.globalAlpha = 1;
+        ctx.stroke();
+    }
+
+    function drawPointer(angle){
+        angle = minAngle - angle;
+        ctx.beginPath();
+        ctx.globalAlpha = 1;
+        ctx.moveTo(canvas.width/2, canvas.height/2);
+        var coord = getCoordinates(angle);
+        ctx.lineTo(coord[0], coord[1]);
+        ctx.stroke();
+    }
+
+    function writeSpeed(){
+        for(i = 0; i < 11; i++){
+            ctx.font = "30px Arial";
+            var angle = Math.PI * 1.5 - Math.PI*i/10;
+            var coord = getCoordinates(angle);
+            ctx.textAlign = "center";
+            ctx.fillText(i*100,coord[0],coord[1]);
+        }
+    }
+
+    function getCoordinates(angle){
+        return[canvas.width/2 + r * Math.sin(angle), canvas.height/2 + r * Math.cos(angle)]
+    }
+    
+    OnDraw();
+    //readJson();
+</script>                                                
+<%+footer%>
