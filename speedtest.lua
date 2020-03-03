@@ -228,25 +228,25 @@ end
 
 --Writes to JSON file all of the information
 function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
-    local file = io.open("speedtest.json","w")
-    file:write("{\n")
+    local file = io.open("/usr/lib/lua/luci/speedtest.json","w")
+    file:write("{")
     if tonumber(downloadSpeed) then
-        file:write("\t\"avgDownlaodSpeed\":"..downloadSpeed.."\n")
+        file:write("\"avgDownloadSpeed\" : "..downloadSpeed..",")
     end
     if tonumber(currentDownloaded) then
-        file:write("\t\"downloaded\":"..currentDownloaded.."\n")
+        file:write("\"downloaded\" : "..currentDownloaded..",")
     end
     if tonumber(uploadSpeed) then
-        file:write("\t\"avgUploadSpeed\":"..uploadSpeed.."\n")
+        file:write("\"avgUploadSpeed\" : "..uploadSpeed..",")
     end
     if tonumber(uploadSpeed) then
-        file:write("\t\"uploaded\":"..uploadSpeed.."\n")
+        file:write("\"uploaded\" : "..uploadSpeed.."")
     end
     if(error ~= nil) then
-        file:write("\t\"error\":\""..error.."\"\n")
+        file:write("\"error\" : \""..error.."\",")
     end
     if(warning ~= nil) then
-        file:write("\t\"warning\":\""..warning.."\"\n")
+        file:write("\"warning\" : \""..warning.."\",")
     end
     file:write("}")
     file:close()
@@ -371,7 +371,7 @@ end
 
 -- getServerData()
 print("Upload")
-isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", time, true)
+isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", 200, true)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
