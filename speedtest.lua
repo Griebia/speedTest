@@ -292,8 +292,16 @@ function flagCheck(num,flag)
     return tmp
 end
 
+function getServerList()
+    local file = io.open("/tmp/serverlist.xml","w")
+    local body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
+    file:write(body)
+    file:close()
+    return body
+end
+
 function getClosestServer()
-    body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
+    body = getServerList()
     local lat1, lon1 = getCurrentLocation()
     local i = 1
     local server

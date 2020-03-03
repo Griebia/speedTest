@@ -4,6 +4,7 @@ function index()
 	entry({"admin", "services", "speed_test"}, template("speed_test"),_("Speed test APP"), 100)
 	entry({"admin", "services", "speed_test", "getJSON"}, call("getJSON"))
 	entry({"admin", "services", "speed_test", "start"}, call("startSpeedTest"))
+	entry({"admin", "services", "speed_test", "getServers"}, call("getServers"))
 end
 
 function getJSON()
@@ -16,4 +17,12 @@ end
 
 function startSpeedTest()
 	luci.sys.call("/usr/lib/lua/luci/speedtest.lua -s")
+end
+
+function getServers()
+	local f = assert(io.open("/tmp/serverlist.xml", "rb"))
+    local response = f:read("*all")
+    f:close()
+	luci.http.prepare_content("application/xml")
+	luci.http.write(response)
 end
