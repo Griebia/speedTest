@@ -2,61 +2,127 @@
 <style>
     nav ul{height:200px; width:18%;}
     nav ul{overflow:hidden; overflow-y:scroll;}
+
+    .find-servers{
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Sit on top */
+        padding-top: 100px; /* Location of the box */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgb(0,0,0); /* Fallback color */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    }
+    /* Modal Content */
+    .content {
+        background-color: #fefefe;
+        margin: auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+    }
+
+    /* The Close Button */
+    .close {
+    color: #aaaaaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+    }
 </style>
 
 
 <div style="text-align: center;">
-    <h2 id="text">Speed Test</h2>
-</div>>
+    <h2 id="state">State</h2>
+    <h2 id="downloadAvg">Downloaded</h2>
+    <h2 id="uploadAvg">Uploaded</h2>
+</div>
 <div style="width: 100%; height: 50%; margin: 0; position:relative">
     <canvas id="speedTest">
     Your browser does not support the canvas element.
     </canvas>
 </div>
 <div style="text-align: center; padding: 10px;">
-    <button class="btn large-btn" onclick="startSpeedTest()">Start speed test</button>
+    <button id="startSpeedTest" class="btn large-btn" onclick="startSpeedTest(this.id)">Start speed test</button>
 </div>
 <div style="text-align: center; padding: 10px;">
-    <button class="btn large-btn" onclick="startSpeedTest()">Change server</button>
+    <button id="changeServer" class="btn large-btn">Change server</button>
 </div>
 
 <!-- Modal -->
-<div class="find-servers">
-    <input id="search" type="text" onkeyup="search()">
-    <nav><ul id="serverlist"></ul></nav>
+<div id="find-servers" class="find-servers">
+    <div class="content">
+        <span class="close">&times;</span>
+        <input id="search" type="text" onkeyup="search()">
+        <nav><ul id="serverlist"></ul></nav>
+    </div>
 </div>
 
 <script type="text/javascript">
-    // window.setInterval(readJson,100);
+    
 
     var maxValue = 1000;
     var canvas = document.getElementById("speedTest");
     var ctx = canvas.getContext("2d");
     var minAngle = Math.PI * 1.5;
     var r = canvas.width/2 - 20;
-    
-    function startSpeedTest(){
+    var selectedServerId;
+    var avgDownload = 0;
+    var avgUpload = 0;
+
+    function startSpeedTest(id){
+        console.log("Starting speedtest");
+        window.setInterval(readSpeeds,50);
+        document.getElementById(id).disabled = true;
+        
         var xhr = new XMLHttpRequest();
         xhr.open("GET", '<%=build_url("admin/services/speed_test/start")%>');
         xhr.send();
 
         xhr.onreadystatechange = function() {
             if(this.readyState === 4 && this.status === 200) {
-                console.log("Success");
             }
         };      
     }
-
-    function readJson(){
+    function readSpeeds(){
+        readJson(function(response){
+            var json = JSON.parse(response);
+            if(json.downloaded != 0){
+                if(state.innerHTML != "Testing download")
+                state.innerHTML = "Testing download"
+                if(avgDownload != json.avgDownloadSpeed){
+                    smoothDraw(avgDownload, json.avgDownloadSpeed);
+                    avgDownload = json.avgDownloadSpeed;
+                }
+            }else{
+                if(state.innerHTML != "Testing upload")
+                state.innerHTML = "Testing upload";
+                if(avgUpload != json.avgUploadSpeed){
+                    smoothDraw(avgUpload, json.avgUploadSpeed);
+                    avgUpload = json.avgUploadSpeed;
+                }
+            }
+        });
+    }
+    function readJson(callback){
+        var state = document.getElementById('state');
         var directory = '<%=build_url("admin/services/speed_test/getJSON")%>';
         var xobj = new XMLHttpRequest();
         xobj.open('GET', directory, true); // Replace 'my_data' with the path to your file
         xobj.onreadystatechange = function () {
             if (xobj.readyState == 4 && xobj.status == "200") {
                 // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
-                var data = xobj.responseText;
-                var json = JSON.parse(data);
-                onDraw(convertToMbps(json.avgUploadSpeed));
+                callback(xobj.responseText);
             }
         };
         xobj.send(null);  
@@ -65,8 +131,19 @@
     function convertToMbps(value){
         return value/125000;
     }
+    var valuee;
+    var count = 0;
+    var change;
+    function smoothDraw(oldSpeed, newSpeed){
+        count = 0;
+        change = newSpeed - oldSpeed;
+        change = change/10;
+        valuee = oldSpeed;
+        window.requestAnimationFrame(draw);
+    }
 
-    function onDraw(val = 0){
+    function draw(val = 0){
+        val = convertToMbps(valuee);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         var angle = Math.PI;
         if(val < maxValue){
@@ -76,13 +153,18 @@
         canvas.style.height='100%';
         canvas.width  = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
-        r = canvas.width/2 - 20;
+        r = canvas.width/2 - 50;
         // canvas.width = window.innerWidth;
         // canvas.height = window.innerHeight;
         drawGauge(angle);
         drawPointer(angle);
         drawGaugeSpeeds();
         drawSpeed(val);
+        count++;
+        if(count < 100){
+            valuee +=change;
+            window.requestAnimationFrame(draw);
+        }
     }
 
     function drawGauge(angle){
@@ -105,7 +187,7 @@
         ctx.beginPath();
         ctx.globalAlpha = 1;
         ctx.moveTo(canvas.width/2,canvas.height);
-        var coord = getCoordinates(angle);
+        var coord = getCoordinates(angle,r);
         ctx.lineTo(coord[0], coord[1]);
         ctx.stroke();
     }
@@ -114,7 +196,7 @@
         for(i = 0; i < 11; i++){
             ctx.font = "30px Arial";
             var angle = Math.PI * 1.5 - Math.PI*i/10;
-            var coord = getCoordinates(angle);
+            var coord = getCoordinates(angle, r + 20);
             ctx.textAlign = "center";
             ctx.fillText(i*100,coord[0],coord[1]);
         }   
@@ -122,11 +204,11 @@
     function drawSpeed(value){
         ctx.font = "40px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(value,canvas.width/2, canvas.height);
+        ctx.fillText(Math.round(value * 100) / 100,canvas.width/2, canvas.height);
     }
 
-    function getCoordinates(angle){
-        return[canvas.width/2 + r * Math.sin(angle), canvas.height + r * Math.cos(angle)]
+    function getCoordinates(angle, rad){
+        return[canvas.width/2 + rad * Math.sin(angle), canvas.height + rad * Math.cos(angle)]
     }
     
     function getServersList(){
@@ -143,25 +225,33 @@
         };
     }
 
-    function addItem(name){
+    function addItem(id,name){
         var ul = document.getElementById("serverlist");
         var li = document.createElement("li");
+        var a = document.createElement("a");
         li.setAttribute('id',name);
-        li.appendChild(document.createTextNode(name));
+        a.setAttribute('id',id);
+        a.setAttribute('onClick','select(this.id)');
+        a.appendChild(document.createTextNode(name));
+        li.appendChild(a);
         ul.appendChild(li);
+    }
+
+    function select(id){
+        selectedServerId = id;
     }
 
     function writeToList(){
         getServerList(function(response){
             let parser = new DOMParser();
             var xmlDoc = parser.parseFromString(response,"application/xml");
+            console.log(xmlDoc);
             for(i = 0; i < xmlDoc.getElementsByTagName('server').length; i++){ 
-                console.log(i);
-                var name = xmlDoc.getElementsByTagName('server')[i].getAttribute('name');
-                addItem(name);
-            }
-            console.log(xmlDoc.getElementsByTagName('server').length);       
-            
+                var servers = xmlDoc.getElementsByTagName('server');
+                var name = servers[i].getAttribute('name');
+                var id = servers[i].getAttribute('id');
+                addItem(id,name);
+            }            
         });
     }
 
@@ -194,8 +284,32 @@
         };
     }
     
+        // Get the modal
+        var modal = document.getElementById("find-servers");
+
+        // Get the button that opens the modal
+        var btn = document.getElementById("changeServer");
+        // Get the <span> element that closes the modal
+        var span = document.getElementsByClassName("close")[0];  
+
+        // When the user clicks the button, open the modal 
+        btn.onclick = function() {
+        modal.style.display = "block";
+        }
+
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function() {
+        modal.style.display = "none";
+        }
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+        }
+
     writeToList();
-    onDraw();
-    readJson();
+    draw();
+    //readSpeeds();
 </script>                                           
 <%+footer%>

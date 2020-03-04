@@ -18,7 +18,7 @@ locationAPIs = {
 server = nil
 warning = nil
 error = nil
-time = 3
+time = 10
 silent = false
 
 -- Gets the current ip address latitude and longitude.
@@ -379,7 +379,7 @@ end
 
 -- getServerData()
 print("Upload")
-isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", 200, true)
+isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", time, true)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
