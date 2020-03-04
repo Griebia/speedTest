@@ -343,6 +343,8 @@ if socket.connect("www.google.com",80) == nil then
     os.exit()
 end
 
+writeData(0,0,0,0)
+
 if not silent then
     print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
     local info = io.read();
@@ -378,13 +380,13 @@ end
 --http://speed-kaunas.telia.lt:8080/speedtest/upload.php
 
 -- getServerData()
-print("Upload")
 isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", time, true)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
     os.exit()
 end
+writeData(-1,-1,-1,-1)
 
 --gcc luaWrapper.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
 --gcc speedtest.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl

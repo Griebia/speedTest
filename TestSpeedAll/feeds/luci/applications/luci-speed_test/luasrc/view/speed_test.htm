@@ -1,8 +1,15 @@
 <%+header%>
 <style>
-    nav ul{height:200px; width:18%;}
-    nav ul{overflow:hidden; overflow-y:scroll;}
-
+    .serverlist{
+        height:200px;
+        width:100%;
+        overflow:hidden; 
+        overflow-y:scroll;
+        }
+    
+    /* .serverlist li{
+        
+        } */
     .find-servers{
         display: none; /* Hidden by default */
         position: fixed; /* Stay in place */
@@ -22,7 +29,7 @@
         margin: auto;
         padding: 20px;
         border: 1px solid #888;
-        width: 80%;
+        width: 50%;
     }
 
     /* The Close Button */
@@ -63,30 +70,39 @@
 <div id="find-servers" class="find-servers">
     <div class="content">
         <span class="close">&times;</span>
+        <h2 id="textChooseServer">Choose a server</h2>
         <input id="search" type="text" onkeyup="search()">
-        <nav><ul id="serverlist"></ul></nav>
+        <nav><ul id="serverlist" class="serverlist"></ul></nav>
     </div>
 </div>
 
 <script type="text/javascript">
     
-
+    var interval;
     var maxValue = 1000;
     var canvas = document.getElementById("speedTest");
     var ctx = canvas.getContext("2d");
     var minAngle = Math.PI * 1.5;
     var r = canvas.width/2 - 20;
-    var selectedServerId;
+    var selectedServer;
     var avgDownload = 0;
     var avgUpload = 0;
+    var xmlDoc;
 
     function startSpeedTest(id){
         console.log("Starting speedtest");
-        window.setInterval(readSpeeds,50);
+        var link = '<%=build_url("admin/services/speed_test/start")%>';
+        if(selectedServer != null){
+            url = selectedServer.getAttribute('url');
+            parameters = "?url="+url;
+            link = link + parameters;
+            console.log("Server is selected");
+        }
+        interval = window.setInterval(readSpeeds,50);
         document.getElementById(id).disabled = true;
-        
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", '<%=build_url("admin/services/speed_test/start")%>');
+        
+        xhr.open("GET", link);
         xhr.send();
 
         xhr.onreadystatechange = function() {
@@ -94,28 +110,44 @@
             }
         };      
     }
+
     function readSpeeds(){
         readJson(function(response){
             var json = JSON.parse(response);
-            if(json.downloaded != 0){
+            if(json.downloaded == -1){
+                if(target != 0){
+                    upload.innerHTML = "Upload : " + convertToMbps(avgUpload) + "Mbps";
+                    target = 0;
+                    draw();
+                }
+                document.getElementById("startSpeedTest").disabled = false;
+                clearInterval(interval);
+            }else if(json.downloaded > 0){
                 if(state.innerHTML != "Testing download")
                 state.innerHTML = "Testing download"
                 if(avgDownload != json.avgDownloadSpeed){
-                    smoothDraw(avgDownload, json.avgDownloadSpeed);
                     avgDownload = json.avgDownloadSpeed;
+                    target = convertToMbps(avgDownload);
+                    draw();
                 }
-            }else{
-                if(state.innerHTML != "Testing upload")
+            }else if(json.uploaded > 0){
+                if(state.innerHTML != "Testing upload"){
                 state.innerHTML = "Testing upload";
-                if(avgUpload != json.avgUploadSpeed){
-                    smoothDraw(avgUpload, json.avgUploadSpeed);
-                    avgUpload = json.avgUploadSpeed;
+                download.innerHTML = "Download : " + convertToMbps(avgDownload) + "Mbps";
                 }
+                if(avgUpload != json.avgUploadSpeed){
+                    avgUpload = json.avgUploadSpeed;
+                    target = convertToMbps(avgUpload);
+                    draw();
+                }
+                
             }
         });
     }
     function readJson(callback){
         var state = document.getElementById('state');
+        var download = document.getElementById('downloadAvg');
+        var upload = document.getElementById('uploadAvg');
         var directory = '<%=build_url("admin/services/speed_test/getJSON")%>';
         var xobj = new XMLHttpRequest();
         xobj.open('GET', directory, true); // Replace 'my_data' with the path to your file
@@ -131,19 +163,12 @@
     function convertToMbps(value){
         return value/125000;
     }
-    var valuee;
-    var count = 0;
-    var change;
-    function smoothDraw(oldSpeed, newSpeed){
-        count = 0;
-        change = newSpeed - oldSpeed;
-        change = change/10;
-        valuee = oldSpeed;
-        window.requestAnimationFrame(draw);
-    }
+    
+    var target = 0;
+    var currentValue = 0;
 
-    function draw(val = 0){
-        val = convertToMbps(valuee);
+    function draw(){
+        var val = currentValue;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         var angle = Math.PI;
         if(val < maxValue){
@@ -159,10 +184,13 @@
         drawGauge(angle);
         drawPointer(angle);
         drawGaugeSpeeds();
-        drawSpeed(val);
-        count++;
-        if(count < 100){
-            valuee +=change;
+        drawSpeed(target);
+        if(Math.round(target) != Math.round(val)){
+            if(target > val){
+                currentValue++;
+            }else{
+                currentValue--;
+            }
             window.requestAnimationFrame(draw);
         }
     }
@@ -193,7 +221,7 @@
     }
 
     function drawGaugeSpeeds(){
-        for(i = 0; i < 11; i++){
+        for(i = 0; i <= 10; i++){
             ctx.font = "30px Arial";
             var angle = Math.PI * 1.5 - Math.PI*i/10;
             var coord = getCoordinates(angle, r + 20);
@@ -210,20 +238,6 @@
     function getCoordinates(angle, rad){
         return[canvas.width/2 + rad * Math.sin(angle), canvas.height + rad * Math.cos(angle)]
     }
-    
-    function getServersList(){
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", 'https://www.c.speedtest.net/speedtest-servers-static.php', true);
-        xhr.withCredentials = true;
-        xhr.send();
-
-        xhr.onreadystatechange = function() {
-            if(this.readyState === 4 && this.status === 200) {
-                console.log(xhr.responseText);
-            }
-            console.log("fail");
-        };
-    }
 
     function addItem(id,name){
         var ul = document.getElementById("serverlist");
@@ -238,16 +252,26 @@
     }
 
     function select(id){
-        selectedServerId = id;
+        var text = document.getElementById("textChooseServer");
+        var servers = xmlDoc.getElementsByTagName('server');
+        for(var i= 0; i < servers.length;i++){
+            
+            if(servers[i].getAttribute('id') === id){
+                var name = servers[i].getAttribute('name');
+                var sponsor = servers[i].getAttribute('sponsor');
+                selectedServer = servers[i];
+                text.innerHTML = "Chosen server is " + sponsor + " from " + name; 
+                break;
+            }
+        }
     }
 
     function writeToList(){
         getServerList(function(response){
             let parser = new DOMParser();
-            var xmlDoc = parser.parseFromString(response,"application/xml");
-            console.log(xmlDoc);
+            xmlDoc = parser.parseFromString(response,"application/xml");
+            var servers = xmlDoc.getElementsByTagName('server');
             for(i = 0; i < xmlDoc.getElementsByTagName('server').length; i++){ 
-                var servers = xmlDoc.getElementsByTagName('server');
                 var name = servers[i].getAttribute('name');
                 var id = servers[i].getAttribute('id');
                 addItem(id,name);

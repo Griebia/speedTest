@@ -4,7 +4,7 @@ function index()
 	entry({"admin", "services", "speed_test"}, template("speed_test"),_("Speed test APP"), 100)
 	entry({"admin", "services", "speed_test", "getJSON"}, call("getJSON"))
 	entry({"admin", "services", "speed_test", "start"}, call("startSpeedTest"))
-	entry({"admin", "services", "speed_test", "getServers"}, call("getServers"))
+	entry({"admin", "services", "speed_test", "getServers"}, call("getServers")) 
 end
 
 function getJSON()
@@ -16,7 +16,14 @@ function getJSON()
 end
 
 function startSpeedTest()
-	luci.sys.call("/usr/lib/lua/luci/speedtest.lua -s")
+	url = luci.http.formvalue("url")
+	
+	call = "/usr/lib/lua/luci/speedtest.lua -s"
+	if(url ~= nil) then
+		call = call.." -u "..url
+	end
+	--luci.http.write(call)
+	luci.sys.call(call)
 end
 
 function getServers()
