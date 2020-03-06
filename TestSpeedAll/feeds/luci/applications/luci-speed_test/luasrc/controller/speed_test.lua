@@ -8,7 +8,7 @@ function index()
 end
 
 function getJSON()
-	local f = assert(io.open("/usr/lib/lua/luci/speedtest.json", "rb"))
+	local f = assert(io.open("/tmp/speedtest.json", "rb"))
     local response = f:read("*all")
     f:close()
 	luci.http.prepare_content("application/json")
@@ -19,11 +19,16 @@ function startSpeedTest()
 	url = luci.http.formvalue("url")
 	
 	call = "/usr/lib/lua/luci/speedtest.lua -s"
-	if(url ~= nil) then
-		call = call.." -u "..url
+	execSpeed = luci.sys.exec("ps | grep [s]peedtest")
+
+	if(execSpeed == "") then
+		if(url ~= nil) then
+			call = call.." -u "..url
+		end
+		--luci.http.write(call)
+		luci.sys.call(call)	
+		luci.util.perror("Started speedtest")
 	end
-	--luci.http.write(call)
-	luci.sys.call(call)
 end
 
 function getServers()

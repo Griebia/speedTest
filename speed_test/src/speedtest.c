@@ -1,6 +1,5 @@
 #include "speedtest.h"
 
-static char error[150]; 
 
 //Libary of commands for lua to recognise.
 static const struct luaL_Reg mylib [] = {
@@ -16,19 +15,9 @@ static int testspeed_wrapper(lua_State *L)
   int timetest = lua_tonumber(L,2);
   int upload = lua_toboolean(L, 3); 
   int res = test_internet_speed(url, timetest, upload, L);
-  if(res < 1){
-    switch(res){
-      case -1:
-        url = "There is not enough space in /tmp folder to preform an internet upload speed test.";
-      break;
-      case -2:
-        url = "There was a problem in opening the made file";
-      break;
-    }
-    res = 1;
-  }else
+  if(res > 0){
     res = 0;
-  
+  }
   lua_pushboolean(L,res);
   lua_pushstring(L, url);
   return 2;
@@ -100,7 +89,6 @@ const char* get_body(const char *URL)
     curl_easy_cleanup(curl); 
     return s.ptr;
   }
-
   curl_easy_cleanup(curl); 
 }
 
@@ -114,16 +102,12 @@ static int call_back(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ult
   TIMETYPE curtime = 0;
   lua_State *L = myp->L;
   curl_easy_getinfo(curl, TIMEOPT, &curtime);
-
-  //printf("%f \n",curtime);
   if((curtime - myp->lastruntime) >= MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL) {
     myp->lastruntime = curtime;
-  
     curl_off_t downloadSpeed;
     curl_off_t uploadSpeed;
     curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD_T, &downloadSpeed);
     curl_easy_getinfo(curl, CURLINFO_SPEED_UPLOAD_T, &uploadSpeed);
-  
     //The function in lua that should be called.
     lua_getglobal(L, "writeData");
     //Return the arguments to the function.
@@ -154,10 +138,8 @@ int test_internet_speed(const char *link, double testTime, int upload, lua_State
   FILE *fp = NULL;
   struct curl_slist *header_list = NULL;
   struct speedtestprogress prog;
-
   //Initiating the curl.
   curl = curl_easy_init();
-
   if(curl) {
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     //Sets the xferinfo callback.
@@ -169,17 +151,13 @@ int test_internet_speed(const char *link, double testTime, int upload, lua_State
     //If it is an upload test does also this.
     if(upload == 1){
       fp = fopen("/dev/zero","r");
-
       if(!fp)
         goto cleanup;
-      
       double sz = 92233720368547758;
-      
       //Adds POST to the curl.
       curl_easy_setopt(curl, CURLOPT_POST, 1L);
       curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE,
                    (curl_off_t)sz);
-
       //Selects the file form it is read.
       curl_easy_setopt(curl, CURLOPT_READDATA, fp);
 

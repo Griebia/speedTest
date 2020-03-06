@@ -228,8 +228,11 @@ end
 
 --Writes to JSON file all of the information
 function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
-    local file = io.open("/usr/lib/lua/luci/speedtest.json","w")
+    local file = io.open("/tmp/speedtest.json","w")
     file:write("{")
+    if (server ~= nil) then
+        file:write("\"serverURL\" : \""..server.."\",")
+    end
     if tonumber(downloadSpeed) then
         file:write("\"avgDownloadSpeed\" : "..downloadSpeed..",")
     end
@@ -336,14 +339,14 @@ if(#arg > 0) then
     end
 end
 
+writeData(0,0,0,0)
+
 --Looks for internet connection
 if socket.connect("www.google.com",80) == nil then
     error = "An internet connection is required to use this application."
     writeData(nil, nil, nil, nil)
     os.exit()
 end
-
-writeData(0,0,0,0)
 
 if not silent then
     print("This speedtest can use up a lot of internet data. Do you want to continue?(Y/N)")
@@ -366,6 +369,7 @@ if(not server) then
     os.exit()
 end
 
+
 if not silent then
     print("The server that is selected: "..server)
 end
@@ -378,7 +382,7 @@ if isError then
 end 
 --https://de.testmy.net/uploader
 --http://speed-kaunas.telia.lt:8080/speedtest/upload.php
-
+writeData(0,0,0,0)
 -- getServerData()
 isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", time, true)
 if isError then
