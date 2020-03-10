@@ -1,5 +1,6 @@
 #include "speedtest.h"
 
+lua_State *stateL;
 
 //Libary of commands for lua to recognise.
 static const struct luaL_Reg mylib [] = {
@@ -35,6 +36,10 @@ static int getbody_wrapper(lua_State *L)
 //Setting the libary to lua to recognise (The naming scheme should be the same as the made .so files).
 int luaopen_libspeedtest(lua_State *L)
 {
+  stateL = L;
+  signal(SIGINT, handle_sigint);
+  send_signals();
+  create_pid();
 	luaL_newlib(L, mylib);
 	return 1;
 }
@@ -85,6 +90,7 @@ const char* get_body(const char *URL)
     curl_easy_setopt(curl, CURLOPT_URL, URL);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl); 
     return s.ptr;
@@ -195,4 +201,33 @@ int test_internet_speed(const char *link, double testTime, int upload, lua_State
   }
 
   return (int)res;
+}
+
+void handle_sigint(int sig)
+{
+  lua_getglobal(stateL, "close");
+  /* do the call (4 arguments, 1 result) */
+  lua_pcall(stateL, 0, 0, 0);
+
+  exit(1);
+}
+
+void send_signals()
+{
+  FILE *fp;
+  if( (fp = fopen("/var/run/speedtest.pid", "r"))){
+    char str[60];
+    fgets (str, 60, fp);
+    int num = atoi(str);
+    kill(num, SIGINT);
+    fclose(fp);
+  }
+}
+
+void create_pid()
+{
+  FILE *fp;
+  fp = fopen("/var/run/speedtest.pid","w");
+  fprintf(fp,"%d", getpid());
+  fclose(fp);
 }

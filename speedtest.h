@@ -4,6 +4,7 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
 #include <lua5.2/lua.h>
 #include <lua5.2/lualib.h>
 #include <lua5.2/lauxlib.h>
@@ -20,7 +21,7 @@
 #else
 #define TIMETYPE double
 #define TIMEOPT CURLINFO_TOTAL_TIME
-#define MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL     0.5
+#define MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL     0.1
 #endif
  
 #define STOP_DOWNLOAD_AFTER_THIS_MANY_BYTES         600000000000
@@ -55,3 +56,6 @@ const char* get_body(const char *link);
 void init_string(struct string *s);
 size_t write_string(void *ptr, size_t size, size_t nmemb, struct string *s);
 size_t write_empty(void *buffer, size_t size, size_t nmemb, void *userp);
+void handle_sigint(int sig);
+void send_signals();
+void create_pid();

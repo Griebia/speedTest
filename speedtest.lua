@@ -3,11 +3,10 @@
 local libspeedtest = require ("libspeedtest")
 local socket =  require("socket")
 
+
+
 locationAPISelected = 1
 locationAPIs = {
-    "a",
-    "b",
-    "c",
     "https://ipapi.co/{ip}/json/",
     "extreme-ip-lookup.com/json/{ip}",
     "http://ip-api.com/json/{ip}",
@@ -18,16 +17,54 @@ locationAPIs = {
 server = nil
 warning = nil
 error = nil
+state = "START"
 time = 10
 silent = false
 
--- Gets the current ip address latitude and longitude.
+--Writes to JSON file all of the information
+function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    local file = io.open("/tmp/speedtest.json","w")
+    file:write("{")
+    if (server ~= nil) then
+        file:write("\"serverURL\" : \""..server.."\",")
+    end
+    if tonumber(downloadSpeed) then
+        file:write("\"avgDownloadSpeed\" : "..downloadSpeed..",")
+    end
+    if tonumber(currentDownloaded) then
+        file:write("\"downloaded\" : "..currentDownloaded..",")
+    end
+    if tonumber(uploadSpeed) then
+        file:write("\"avgUploadSpeed\" : "..uploadSpeed..",")
+    end
+    if tonumber(uploadSpeed) then
+        file:write("\"uploaded\" : "..uploadSpeed..",")
+    end
+    if(error ~= nil) then
+        state = "ERROR"
+        file:write("\"error\" : \""..error.."\",")
+    end
+    if(warning ~= nil) then
+        file:write("\"warning\" : \""..warning.."\",")
+    end
+    if(state ~= nil) then
+        file:write("\"state\" : \""..state.."\"")
+    end
+    file:write("}")
+    file:close()
+end
+
+writeToJSON(0,0,0,0)
+-- Gets the current ip addresses latitude and longitude.
 function getCurrentLocation()
     -- Getting the json file form https://api.myip.com with IP.
     local body = libspeedtest.getbody("https://api.myip.com")
+    if body == nil or body == "" then
+        warning = "Cound not determine your ip address, the server will be selected closest to 0, 0"
+        return 0, 0
+    end
     ip = parseIP(body)
     body = libspeedtest.getbody(string.gsub(locationAPIs[locationAPISelected],"{ip}",ip))
-    
     if (string.match(body,"lat") or string.match(body, "coords")) then
         -- Gets from the retuned data the latitude and longitude.
         return parseLocation(body)
@@ -48,31 +85,6 @@ function parseIP(body)
     j = string.find(body,"\"",i+1)
     ip = string.sub(body,i+1,j-1)
     return ip
-end
-
--- Gets the links latitude and longitude.
-function getLocation(link)
-    local trimedLink = trimLink(link)
-    -- Get the ip address of the site
-    local client = socket.connect( trimedLink, 80 )
-    if(client == nil) then
-        warning = "To the url "..link.."we couldn't connect"
-        writeData(nil,nil,nil,nil)
-        return false
-    end
-    local ip, port = client:getpeername()
-    -- Gets the ip address information.
-    local body = libspeedtest.getbody(string.gsub(locationAPIs[locationAPISelected],"{ip}",ip))
-    if (string.match(body,"lat") or string.match(body, "coords")) then
-        -- Gets from the retuned data the latitude and longitude.
-        return parseLocation(body)
-    end
-
-    if(#locationAPIs > (locationAPISelected)) then
-        locationAPISelected = locationAPISelected + 1
-        return getLocation(link)
-    end
-    return false;
 end
 
 -- Parse the latitude and longitude form given string.
@@ -110,54 +122,12 @@ function trimLink(link)
         i = string.find(link, "\n")
         cutLink = string.sub(link, j+1, i)
     end
-    if(string.match(cutlink,"/")) then
-        i = string.find(cutLink, "/")
+    if(string.match(cutlink,":")) then
+        i = string.find(cutLink, ":")
         cutLink = string.sub(cutLink, 0, i-1)
     end
     return cutLink
 end
-
--- Finds the closest server from the current location.
-function findClosestServer(servers)
-    local server;
-    local lat1, lon1 = getCurrentLocation()
-    local count = #servers
-    local minDistance = 999999999999
-    for i=1,count,1 do 
-        local lat2, lon2 = getLocation(servers[i]);
-        if(lat2 == nil or lon2 == nil )then
-            return
-        end
-        local dist = calculateDistance(lat1,lon1,lat2,lon2)
-        if(minDistance > dist) then
-            minDistance = dist
-            server = servers[i]
-        end
-    end
-   return server
-end
-
-
-
-function findClosestServer(url, latURL, lonURL)
-    local server;
-    local lat1, lon1 = getCurrentLocation()
-    local count = #servers
-    local minDistance = 999999999999
-    for i=1,count,1 do 
-        local lat2, lon2 = getLocation(servers[i]);
-        if(lat2 == nil or lon2 == nil )then
-            return
-        end
-        local dist = calculateDistance(lat1,lon1,lat2,lon2)
-        if(minDistance > dist) then
-            minDistance = dist
-            server = servers[i]
-        end
-    end
-   return server
-end
-
 
 -- Calculates the distances between 2 positions.
 function calculateDistance(lat1,lon1,lat2,lon2)
@@ -192,8 +162,26 @@ function convertBytes(bytes,mbps)
     end
 end
 
+count = 0
+dowloadBytes = 0
+uploadBytes = 0
+
 --Writes by choosen paramters to specific places
 function writeData(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
+    if(currentDownloaded == downloadBytes and currentUpload == uploadBytes) then
+        count = count + 1
+        if count == 3 then
+            error = "Connection to the speed test server was lost."
+            writeData(nil,nil,nil,nil)
+            os.exit()
+        end
+    else
+        count = 0;
+    end
+
+    downloadBytes = currentDownloaded
+    uploadBytes = currentUpload
+
     if silent then
         writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
     else
@@ -205,6 +193,10 @@ function writeData(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
     if(error ~= nil) then
         error = nil
     end
+end
+
+function close()
+    print("Closing the speed test")
 end
 
 --Writes to console and JSON file
@@ -224,35 +216,6 @@ function writeToConsole (downloadSpeed, currentDownloaded,uploadSpeed,currentUpl
     end
     writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
     return true
-end
-
---Writes to JSON file all of the information
-function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
-    local file = io.open("/tmp/speedtest.json","w")
-    file:write("{")
-    if (server ~= nil) then
-        file:write("\"serverURL\" : \""..server.."\",")
-    end
-    if tonumber(downloadSpeed) then
-        file:write("\"avgDownloadSpeed\" : "..downloadSpeed..",")
-    end
-    if tonumber(currentDownloaded) then
-        file:write("\"downloaded\" : "..currentDownloaded..",")
-    end
-    if tonumber(uploadSpeed) then
-        file:write("\"avgUploadSpeed\" : "..uploadSpeed..",")
-    end
-    if tonumber(uploadSpeed) then
-        file:write("\"uploaded\" : "..uploadSpeed.."")
-    end
-    if(error ~= nil) then
-        file:write("\"error\" : \""..error.."\",")
-    end
-    if(warning ~= nil) then
-        file:write("\"warning\" : \""..warning.."\",")
-    end
-    file:write("}")
-    file:close()
 end
 
 --Acts by the given flag from avg
@@ -296,10 +259,17 @@ function flagCheck(num,flag)
 end
 
 function getServerList()
-    local file = io.open("/tmp/serverlist.xml","w")
-    local body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
-    file:write(body)
-    file:close()
+    local body
+    local file = io.open("/tmp/serverlist.xml","r")
+    if (file ~= nil) then
+        body = file:read("*all")
+        file:close()
+    else
+        file = io.open("/tmp/serverlist.xml","w")
+        body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
+        file:write(body)
+        file:close()
+    end
     return body
 end
 
@@ -309,7 +279,7 @@ function getClosestServer()
     local i = 1
     local server
     local minDistance = -1
-    for line in magiclines(body) do
+    for line in readLines(body) do
         if string.match(line,"lat") then
             lat2, lon2 = parseLocation(line)
             if(lat2 == nil or lon2 == nil )then
@@ -325,11 +295,20 @@ function getClosestServer()
     return trimLink(server);
 end
 
-function magiclines(s)
+function cheakConnection(url)
+    if socket.connect(url, 80) == nil then
+        return false
+    end
+    return true
+end
+
+-- Reads line by line a string.
+function readLines(s)
     if s:sub(-1)~="\n" then s=s.."\n" end
     return s:gmatch("(.-)\n")
 end
---Checks if there is a any added flags and does the accordingly 
+
+--Checks if there is a any added flags and does them accordingly.
 if(#arg > 0) then
     local i = 1
     while #arg >= i do
@@ -339,11 +318,9 @@ if(#arg > 0) then
     end
 end
 
-writeData(0,0,0,0)
-
 --Looks for internet connection
-if socket.connect("www.google.com",80) == nil then
-    error = "An internet connection is required to use this application."
+if not cheakConnection("www.google.com") then
+    error = "Internet connection is required to use this application."
     writeData(nil, nil, nil, nil)
     os.exit()
 end
@@ -360,38 +337,50 @@ if not server then
     if not silent then
         print("Finding closest server..")
     end
+    state = "FINDING_SERVER"
+    writeToJSON(nil,nil,nil,nil)
     server = getClosestServer();
+    if(not server) then
+        error = "We could not determine the closes server to you."
+        writeData(nil,nil,nil,nil)
+        os.exit()
+    end
 end
-
-if(not server) then
-    error = "We could not determine the closes server to you."
-    writeData(nil,nil,nil,nil)
+print(server)
+if not cheakConnection(server) then
+    error = "There were no response from the selected server."
+    writeData(nil, nil, nil, nil)
     os.exit()
 end
-
 
 if not silent then
     print("The server that is selected: "..server)
 end
 
-isError, res = libspeedtest.testspeed(server.."/download", time, false)
+state = "TESTING_DOWNLOAD"
+
+isError, res = libspeedtest.testspeed(server..":8080/download", time, false)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
     os.exit()
 end 
---https://de.testmy.net/uploader
---http://speed-kaunas.telia.lt:8080/speedtest/upload.php
-writeData(0,0,0,0)
--- getServerData()
-isError, res = libspeedtest.testspeed(server.."/speedtest/upload.php", time, true)
+
+state = "COOLDOWN"
+writeToJSON(0,0,0,0)
+os.execute("sleep 3");
+state = "TESTING_UPLOAD"
+
+isError, res = libspeedtest.testspeed(server..":8080/speedtest/upload.php", time, true)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
     os.exit()
 end
-writeData(-1,-1,-1,-1)
+
+state = "FINISHED"
+writeToJSON(0,0,0,0)
 
 --gcc luaWrapper.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
 --gcc speedtest.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
---/usr/lib/lua/luci/
+--/usr/lib/lua/luci/  

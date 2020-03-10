@@ -1,32 +1,28 @@
+<script src="<%=resource%>/vanilla-dataTables.js"></script>
 <%+header%>
-<style>
-    .serverlist{
-        height:200px;
-        width:100%;
-        padding: 10px;
-        overflow:hidden; 
-        overflow-y:scroll;
-        }
-        
-    .serverlist li{
+<style> 
+    .trRow{
         border-radius: 5px;
         border: 2px solid #0054A6;
-        padding: 5px;
+        padding: 2px;
     }
 
-    .serverlist li:hover,
-    .serverlist li:focus{
+    .trRow:hover,
+    .trRow:focus{
         background-color: #0054A6;
         text-decoration: none;
         cursor: pointer;
     }
-    .serverlist li:hover .selectCity,
-    .serverlist li:hover .selectName,
-    .serverlist li:focus .selectCity,
-    .serverlist li:focus .selectName{
+    .trRow:hover .selectCity,
+    .trRow:hover .selectName,
+    .trRow:hover .selectCountry,
+    .trRow:focus .selectCity,
+    .trRow:focus .selectName,
+    .trRow:focus .selectCountry{
         color: white;
     }
     
+
     .find-servers{
         display: none; /* Hidden by default */
         position: fixed; /* Stay in place */
@@ -48,21 +44,41 @@
         padding: 20px;
         border: 1px solid #888;
         width: 50%;
+        text-align: center;
+    }
+    .dataTable-search{
+        padding: 5px;
+    }
+    .dataTable-top{
+        margin: 10px;
+    }
+    .content input{
+        max-width: none !important;
+        width: 80% !important;
+        display: inline-block;
     }
 
     /* The Close Button */
     .closeModal {
-        color: #aaaaaa;
+        color: #444444;
         float: right;
         font-size: 28px;
+        top: 0;
         font-weight: bold;
     }
 
     .closeModal:hover,
     .closeModal:focus {
-        color: #000;
+        color: #0054A6;
         text-decoration: none;
         cursor: pointer;
+    }
+
+    /* Table input */
+    .selectCountry{
+        color: #0054A6;
+        font-size: 15px;
+        font-weight: bolder;
     }
 
     .selectCity{
@@ -77,39 +93,40 @@
         opacity: 0.75;
         font-weight: bold;
     }
-    /* width */
-    .content ::-webkit-scrollbar {
-    width: 10px;
-    }
-
-    /* Track */
-    .content ::-webkit-scrollbar-track {
-    background: #f1f1f1; 
+    
+    .table-select{
+        border-radius: 10px !important;
+        background-color: #fefefe;
     }
     
-    /* Handle */
-    .content ::-webkit-scrollbar-thumb {
-        background: rgba(0, 84, 166, 0.75);
-        opacity: 0.75;
+    .table-select tr:last-child{
+        border: 2px solid #0054A6 !important;
     }
 
-    /* Handle on hover */
-    .content ::-webkit-scrollbar-thumb:hover {
-    background: #0054A6; 
+    .dataTable-pagination.pagination li{
+        font-size: 15px;
     }
-    .content input[type=search] {
-        display:inline-block;
-        max-width: none !important;
-        width: 100%;
+
+    .tableHead{
+        background-color: #0054A6;
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
+    }
+
+    .searchIcon{
+        display: inline-block;
+        width: 25px;
+        vertical-align: middle;
     }
 
 </style>
 
 
 <div style="text-align: center;">
-    <h2 id="state">Press start to begin the speed test</h2>
-    <h2 id="downloadAvg">Download: - Mbps</h2>
-    <h2 id="uploadAvg">Upload: - Mbps</h2>
+    <h1 id="state">Press start to begin the speed test</h1>
+    <h2 id="downloadAvg">Download: -</h2>
+    <h2 id="uploadAvg">Upload: -</h2>
 </div>
 <div style="width: 100%; height: 63%; margin: 0; position:relative">
     <canvas id="speedTest">
@@ -127,18 +144,37 @@
 <div id="find-servers" class="find-servers">
     <div class="content">
         <span class="closeModal">&times;</span>
-        <span style="padding: 5px; font-size: medium; font-weight: bold;" id="textChooseServer">Choose a server</span>
+        <span style="display: inline-block; padding: 15px; font-size: medium; font-weight: bold;" id="textChooseServer">Choose a server</span>
         <br>
-        <div style="width: 100%;">
-            <input id="search" type="search" onkeyup="search()" placeholder="Search for a city">
+        <div id="status.eventlog.toggle" class="toggle-content">
+            <div id="loading" style="display: flex;flex-direction: column-reverse;align-items: center; margin-top: 100px; margin-bottom: 100px;">
+                <span style="position: relative; bottom: -2px;"> Loading... </span>
+                <img src="/luci-static/resources/icons/loading_small.gif" alt="Loading" style="max-width: 33px;">
+            </div>
+            <div id="tableContent" class="table-wrapper table-select" style="display: none;">
+                <table id="table">
+                    <thead class="tableHead">
+                        <tr>
+                            <td class="tableHead ">Country</td>
+                            <td class="tableHead">City</td>
+                            <td class="tableHead">Name</td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <nav style="padding: 5px;"><ul id="serverlist" class="serverlist"></ul></nav>
     </div>
 </div>
 
+
+
+
 <script type="text/javascript">
-    
-    var interval;
+    var dataTable = new DataTable("#table",{perPageSelect : false, sortable : false});
+    var textServer = null;
+    var timeToNextCall = 1000; 
     var maxValue = 1000;
     var canvas = document.getElementById("speedTest");
     var ctx = canvas.getContext("2d");
@@ -153,27 +189,32 @@
     var currentValue = 0;
 
     //Gets the server list.
-    writeToList();
+    writeToTable();
     //Draws the speedometer.
     draw();
 
+    //If the screen resizes then redraw.
     window.onresize = function (){
         draw();
     }
 
     function startSpeedTest(id){
-        console.log("Starting speedtest");
+        timeToNextCall = 1000;
+        //Disable the buttons.
+        document.getElementById(id).disabled = true;
+        document.getElementById("changeServer").disabled = true;
         //If there is a selected server sends it to the controller.
         var link = '<%=build_url("admin/services/speed_test/start")%>';
         if(selectedServer != null){
             url = selectedServer.getAttribute('url');
             parameters = "?url="+url;
             link = link + parameters;
-            console.log("Server is selected");
         }
-        interval = window.setInterval(readSpeeds,50);
-        document.getElementById(id).disabled = true;
+        
+        //Set the elements to indicate for the speed test start.
         document.getElementById("state").innerHTML = "Speed test started...";
+        document.getElementById("downloadAvg").innerHTML = "Download: -";
+        document.getElementById("uploadAvg").innerHTML = "Upload: - ";
         var xhr = new XMLHttpRequest();
         
         xhr.open("GET", link);
@@ -181,57 +222,115 @@
 
         xhr.onreadystatechange = function() {
             if(this.readyState === 4 && this.status === 200) {
-                console.log("Success");
             }
-        };      
+        };
+        setTimeout(readSpeedResults,1000);      
     }
 
     //Calls for the json about the speed test.
-    function readSpeeds(){
-        readJson(function(response){
+    function readSpeedResults(){
+        callJson(function(response){
             var json = JSON.parse(response);
             console.log(json);
-            if(json.downloaded == -1){
+            if(json.state == "FINDING_SERVER"){
+                //Write that you are looking for the closes server.
+                if(state.innerHTML != "Finding closest server..."){
+                    state.innerHTML = "Finding closest server...";
+                    textServer = null;
+                }
+                //Draw the gauge at 0.
                 if(target != 0){
-                    state.innerHTML = "The test to " + json.serverURL + " has finished"
-                    var upload = document.getElementById('uploadAvg');
-                    upload.innerHTML = "Upload : " + Math.round(convertToMbps(avgUpload) * 100) / 100 + "Mbps";
                     target = 0;
                     draw();
                 }
-                document.getElementById("startSpeedTest").disabled = false;
-                clearInterval(interval);
-            }else if(json.downloaded > 0){
-                if(state.innerHTML != "Testing download from " + json.serverURL)
-                state.innerHTML = "Testing download from " + json.serverURL;
-                
+            }else if(json.state == "TESTING_DOWNLOAD"){
+                //Get the text about the server from the start of download.
+                if(textServer == null){
+                    textServer = "finding..";
+                    setTextAboutServer(json.serverURL);
+                }
+                //If the download information is not set then set it.
+                if(state.innerHTML != "Testing download from " + textServer){
+                    state.innerHTML = "Testing download from " + textServer;
+                    for(var i = 0; i < 9; i++){
+                        readSpeedResults();
+                    }
+                    timeToNextCall = 0;
+                }
+                //Redraw if the average download changes.
                 if(avgDownload != json.avgDownloadSpeed){
                     avgDownload = json.avgDownloadSpeed;
                     target = convertToMbps(avgDownload);
                     draw();
                 }
-            }else if(json.uploaded > 0){
-                if(state.innerHTML != "Testing upload to " + json.serverURL){
-                state.innerHTML = "Testing upload to " + json.serverURL;
-                var download = document.getElementById('downloadAvg');
-                download.innerHTML = "Download : " + Math.round(convertToMbps(avgDownload) * 100) / 100 + "Mbps";
+            }else if(json.state == "TESTING_UPLOAD"){
+                //Set the information about the upload testing and the results of the download.
+                if(state.innerHTML != "Testing upload to " + textServer){
+                    state.innerHTML = "Testing upload to " + textServer;
+                    var download = document.getElementById('downloadAvg');
+                    download.innerHTML = "Download : " + Math.round(convertToMbps(avgDownload) * 100) / 100 + "Mbps";
                 }
+                //Redraw if the average upload changes.
                 if(avgUpload != json.avgUploadSpeed){
                     avgUpload = json.avgUploadSpeed;
                     target = convertToMbps(avgUpload);
                     draw();
                 }
-            }else{
+            }else if(json.state == "FINISHED"){
+                //If the target is not 0 set it to zero and write about the upload results.
+                if(target != 0){
+                    document.getElementById("startSpeedTest").disabled = false;
+                    document.getElementById("changeServer").disabled = false;
+                    state.innerHTML = "The test to " + textServer + " has finished"
+                    var upload = document.getElementById('uploadAvg');
+                    upload.innerHTML = "Upload : " + Math.round(convertToMbps(avgUpload) * 100) / 100 + "Mbps";
+                    target = 0;
+                    draw();
+                }
+                if(document.getElementById("changeServer").disabled || document.getElementById("startSpeedTest").disabled){
+                    document.getElementById("startSpeedTest").disabled = false;
+                    document.getElementById("changeServer").disabled = false;
+                }
+                return;
+            }else if(json.state == "COOLDOWN"){
+                //Draw the gauge at 0.
                 if(target != 0){
                     target = 0;
                     draw();
                 }
+            }else if(json.state == "ERROR"){
+                if(state.innerHTML != "Error: " + json.error){
+                    state.innerHTML = "Error: " + json.error;
+                    state.style.color = "red";
+                }
+                //Draw the gauge at 0.
+                if(target != 0){
+                    target = 0;
+                    draw();
+                }
+                return;
             }
+
+            setTimeout(readSpeedResults,timeToNextCall);
         });
     }
 
+    //Set the text about server for an url.
+    function setTextAboutServer(url){
+        var servers = xmlDoc.getElementsByTagName('server');
+        for(var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++){
+            if(servers[i].getAttribute('url').includes(url)){
+                var city = servers[i].getAttribute('name');
+                var sponsor = servers[i].getAttribute('sponsor');
+                var country = servers[i].getAttribute('country');
+                textServer = sponsor + " from " + city + ", " + country;
+                break;
+            }
+        }
+    }
+
     //Calls for the speedtest.json file form backend.
-    function readJson(callback){
+    function callJson(callback){
         var state = document.getElementById('state');
         var directory = '<%=build_url("admin/services/speed_test/getJSON")%>';
         var xobj = new XMLHttpRequest();
@@ -242,7 +341,7 @@
                 callback(xobj.responseText);
             }
         };
-        xobj.send(null);  
+        xobj.send(null);
     }
 
     //Converts the speed to Mbps.
@@ -269,25 +368,20 @@
         drawPointer(angle);
         drawGaugeSpeeds();
         drawSpeed(target);
-        if(Math.round(target) != Math.round(val)){
-            if(target > val){
-                var dif = target - val;
-                if(dif > 50){
-                    currentValue += 5
-                }else if (dif > 10){
-                    currentValue +=2
-                }else
-                currentValue++;
-            }else{
-                var dif = val - target;
-                if(dif > 50){
-                    currentValue -= 5
-                }else if (dif > 10){
-                    currentValue -=2
-                }else
-                currentValue--;
-            }
+        if(Math.round(target*10) != Math.round(currentValue*10)){
+            currentValue += inclineCalculation(target, val);
             window.requestAnimationFrame(draw);
+        }
+    }
+
+    function inclineCalculation(target, val){
+        var dif = target - val;
+        if(Math.abs(dif) > 0.1){
+            return dif/50;
+        } else if (dif > 0){
+            return 0.01;
+        } else if (dif < 0){
+            return -0.01;
         }
     }
 
@@ -337,6 +431,7 @@
             ctx.fillText(i*100,coord[0],coord[1]);
         }   
     }
+
     function drawSpeed(value){
         ctx.fillStyle = "#000000";
         var fontSize = 0.04;
@@ -351,72 +446,84 @@
     }
     
     /*Modal functions */
+    var newRows = [];
 
-    function addItem(id, city, name){
-        var ul = document.getElementById("serverlist");
-        var li = document.createElement("li");
-        var a = document.createElement("a");
+    //Add server elements to an array.
+    function addItem(country, city, name){
+        var spanCountry = document.createElement("span");
         var spanCity = document.createElement("span");
         var spanName= document.createElement("span");
+        spanCountry.setAttribute('class','selectCountry');
         spanCity.setAttribute('class','selectCity');
         spanName.setAttribute('class','selectName');
-        li.setAttribute('id',id);
-        li.setAttribute('onClick','select(this.id)');
-        a.setAttribute('id',id);
+        spanCountry.appendChild(document.createTextNode(country));
         spanCity.appendChild(document.createTextNode(city));
         spanName.appendChild(document.createTextNode(name));
-        a.appendChild(spanCity);
-        a.appendChild(document.createTextNode(" "));
-        a.appendChild(spanName);
-        li.appendChild(a);
-        ul.appendChild(li);
+        var info = [spanCountry.outerHTML, spanCity.outerHTML , spanName.outerHTML];
+        newRows.push(info);
     }
 
+    //Select function from table.
     function select(id){
         var text = document.getElementById("textChooseServer");
         var servers = xmlDoc.getElementsByTagName('server');
         for(var i= 0; i < servers.length;i++){
-            
             if(servers[i].getAttribute('id') === id){
-                var name = servers[i].getAttribute('name');
+                var city = servers[i].getAttribute('name');
                 var sponsor = servers[i].getAttribute('sponsor');
+                var country = servers[i].getAttribute('country');
                 selectedServer = servers[i];
-                text.innerHTML = "Chosen server is " + sponsor + " from " + name; 
+                textServer = sponsor + " from " + city + ", " + country;
+                text.innerHTML = "Selected server is " + textServer;
                 break;
             }
         }
+        state.innerHTML = "Press start to begin the speed test to " + textServer;
+        modal.style.display = "none";
     }
 
-    function writeToList(){
+    function writeToTable(){
         getServerList(function(response){
             let parser = new DOMParser();
             xmlDoc = parser.parseFromString(response,"application/xml");
             var servers = xmlDoc.getElementsByTagName('server');
-            for(i = 0; i < xmlDoc.getElementsByTagName('server').length; i++){ 
+            //Put the data to the table.
+            for(var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++){ 
                 var city = servers[i].getAttribute('name');
-                var id = servers[i].getAttribute('id');
+                var country = servers[i].getAttribute('country');
                 var sponsor = servers[i].getAttribute('sponsor');
-                addItem(id, city, sponsor);
-            }            
+                addItem(country, city ,sponsor);
+            }
+            dataTable.rows().add(newRows);
+            //Set attribute for the table.
+            for(var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++)
+            {
+                var id = servers[i].getAttribute('id');
+                dataTable.activeRows[i].setAttribute('id', id);
+                dataTable.activeRows[i].setAttribute('onclick', 'select(this.id);');
+                dataTable.activeRows[i].setAttribute('class', 'trRow');
+            }
+            hideLoading();
         });
+        
     }
 
-    function search() {
-        var input, filter, ul, li, a, i, txtValue;
-        input = document.getElementById("search");
-        filter = input.value.toUpperCase();
-        ul = document.getElementById("serverlist");
-        li = ul.getElementsByTagName("li");
-        for (i = 0; i < li.length; i++) {
-            txtValue = li[i].innerHTML;
-            if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                li[i].style.display = "";
-            } else {
-                li[i].style.display = "none";
-            }
-        }
-    }   
-
+    //Hide the loading element.
+    function hideLoading(){
+        var searchIcon = document.createElement("IMG");
+        var div = document.createElement('div');
+        searchIcon.src = "/luci-static/resources/search.svg";
+        div.setAttribute('class', 'searchIcon');
+        div.appendChild(searchIcon);
+        var search = document.getElementsByClassName("dataTable-search")[0]
+        search.insertBefore(div,search.firstChild);
+		var e = document.getElementById("loading");
+		e.setAttribute('style', 'display: none;');
+		var list = document.getElementById("tableContent");
+		list.setAttribute('style', 'display: ');
+    }
+    
+    //Callback for the server list.
     function getServerList(callback){
         var xhr = new XMLHttpRequest();
         xhr.open("GET", '<%=build_url("admin/services/speed_test/getServers")%>', true);
@@ -453,5 +560,5 @@
             modal.style.display = "none";
         }
     }
-</script>                                           
+</script>                                       
 <%+footer%>
