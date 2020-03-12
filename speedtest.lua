@@ -54,7 +54,7 @@ function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
     file:close()
 end
 
-writeToJSON(0,0,0,0)
+writeToJSON(nil,nil,nil,nil)
 -- Gets the current ip addresses latitude and longitude.
 function getCurrentLocation()
     -- Getting the json file form https://api.myip.com with IP.
@@ -231,8 +231,9 @@ function flagCheck(num,flag)
             warning = "The link was not set correctly"
             writeData(nil,nil,nil,nil)
         end
+        server = trimLink(server)
         if socket.connect(server,80) == nil then
-            warning = "There was no connection to the given URL"
+            error = "There was no connection to the given server"
             writeData(nil,nil,nil,nil)
         end
         tmp = 1
@@ -263,13 +264,25 @@ function getServerList()
     local file = io.open("/tmp/serverlist.xml","r")
     if (file ~= nil) then
         body = file:read("*all")
+        if body == nil or body == "" then
+            os.remove("/tmp/serverlist.xml")
+            error = "Could not get the server list."
+            writeData(nil,nil,nil,nil);
+            os.exit();
+        end
         file:close()
     else
         file = io.open("/tmp/serverlist.xml","w")
         body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
+        if body == nil or body == "" then
+            error = "Could not get the server list."
+            writeData(nil,nil,nil,nil);
+            os.exit();
+        end
         file:write(body)
         file:close()
     end
+
     return body
 end
 
@@ -296,10 +309,14 @@ function getClosestServer()
 end
 
 function cheakConnection(url)
-    if socket.connect(url, 80) == nil then
-        return false
+    local connection = socket.tcp()
+    connection:settimeout(1000)
+    local result = connection:connect(url, 80)
+    connection:close()
+    if result then
+        return true
     end
-    return true
+    return false
 end
 
 -- Reads line by line a string.
@@ -333,6 +350,7 @@ if not silent then
     end
 end
 
+
 if not server then
     if not silent then
         print("Finding closest server..")
@@ -346,7 +364,7 @@ if not server then
         os.exit()
     end
 end
-print(server)
+
 if not cheakConnection(server) then
     error = "There were no response from the selected server."
     writeData(nil, nil, nil, nil)
@@ -367,8 +385,8 @@ if isError then
 end 
 
 state = "COOLDOWN"
-writeToJSON(0,0,0,0)
-os.execute("sleep 3");
+writeToJSON(nil,nil,nil,nil)
+socket.sleep(3);
 state = "TESTING_UPLOAD"
 
 isError, res = libspeedtest.testspeed(server..":8080/speedtest/upload.php", time, true)
@@ -380,7 +398,7 @@ end
 
 state = "FINISHED"
 writeToJSON(0,0,0,0)
-
+os.remove("/var/run/speedtest.pid")
 --gcc luaWrapper.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
 --gcc speedtest.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
 --/usr/lib/lua/luci/  

@@ -21,7 +21,6 @@
     .trRow:focus .selectCountry{
         color: white;
     }
-    
 
     .find-servers{
         display: none; /* Hidden by default */
@@ -39,27 +38,33 @@
     /* Modal Content */
     .content {
         background-color: #fefefe;
-        border-radius: 5px;
+        border-radius: 8px;
         margin: auto;
         padding: 20px;
         border: 1px solid #888;
         width: 50%;
-        text-align: center;
     }
     .dataTable-search{
-        padding: 5px;
+        position: relative;
+        width: 100%;
     }
+
     .dataTable-top{
         margin: 10px;
     }
     .content input{
         max-width: none !important;
-        width: 80% !important;
+        width: 90% !important;
         display: inline-block;
+        font-size: 15px !important;
+        vertical-align: middle;
+        padding: 5px;
+        padding-left: 24px;
     }
 
     /* The Close Button */
     .closeModal {
+        vertical-align: top;
         color: #444444;
         float: right;
         font-size: 28px;
@@ -76,6 +81,7 @@
 
     /* Table input */
     .selectCountry{
+        padding-left: 3px;
         color: #0054A6;
         font-size: 15px;
         font-weight: bolder;
@@ -114,10 +120,20 @@
         color: white;
     }
 
+    .dataTable-info{
+        padding: 7px;
+    }
+
     .searchIcon{
-        display: inline-block;
-        width: 25px;
-        vertical-align: middle;
+        position: absolute;
+        left: 5px;
+        /* padding: 10px 12px; */
+        pointer-events: none;
+        top: 0.55rem;
+        width: 18px;
+    }
+    .modalText{
+        display: inline-block; padding: 15px; font-size: medium; font-weight: bold;
     }
 
 </style>
@@ -144,7 +160,7 @@
 <div id="find-servers" class="find-servers">
     <div class="content">
         <span class="closeModal">&times;</span>
-        <span style="display: inline-block; padding: 15px; font-size: medium; font-weight: bold;" id="textChooseServer">Choose a server</span>
+        <span class="modal" style="display: inline-block; padding: 15px; padding-top: 7px; font-size: medium; font-weight: bold;" id="textChooseServer">Choose a server</span>
         <br>
         <div id="status.eventlog.toggle" class="toggle-content">
             <div id="loading" style="display: flex;flex-direction: column-reverse;align-items: center; margin-top: 100px; margin-bottom: 100px;">
@@ -213,6 +229,7 @@
         
         //Set the elements to indicate for the speed test start.
         document.getElementById("state").innerHTML = "Speed test started...";
+        document.getElementById("state").setAttribute('style', 'display: ');
         document.getElementById("downloadAvg").innerHTML = "Download: -";
         document.getElementById("uploadAvg").innerHTML = "Upload: - ";
         var xhr = new XMLHttpRequest();
@@ -231,7 +248,6 @@
     function readSpeedResults(){
         callJson(function(response){
             var json = JSON.parse(response);
-            console.log(json);
             if(json.state == "FINDING_SERVER"){
                 //Write that you are looking for the closes server.
                 if(state.innerHTML != "Finding closest server..."){
@@ -252,7 +268,7 @@
                 //If the download information is not set then set it.
                 if(state.innerHTML != "Testing download from " + textServer){
                     state.innerHTML = "Testing download from " + textServer;
-                    for(var i = 0; i < 9; i++){
+                    for(var i = 0; i < 3; i++){
                         readSpeedResults();
                     }
                     timeToNextCall = 0;
@@ -302,6 +318,8 @@
                 if(state.innerHTML != "Error: " + json.error){
                     state.innerHTML = "Error: " + json.error;
                     state.style.color = "red";
+                    document.getElementById("startSpeedTest").disabled = false;
+                    document.getElementById("changeServer").disabled = false;
                 }
                 //Draw the gauge at 0.
                 if(target != 0){
@@ -478,6 +496,7 @@
                 break;
             }
         }
+        state.setAttribute('style','color: ;');
         state.innerHTML = "Press start to begin the speed test to " + textServer;
         modal.style.display = "none";
     }
@@ -511,12 +530,10 @@
     //Hide the loading element.
     function hideLoading(){
         var searchIcon = document.createElement("IMG");
-        var div = document.createElement('div');
         searchIcon.src = "/luci-static/resources/search.svg";
-        div.setAttribute('class', 'searchIcon');
-        div.appendChild(searchIcon);
+        searchIcon.setAttribute('class', 'searchIcon');
         var search = document.getElementsByClassName("dataTable-search")[0]
-        search.insertBefore(div,search.firstChild);
+        search.insertBefore(searchIcon,search.firstChild);
 		var e = document.getElementById("loading");
 		e.setAttribute('style', 'display: none;');
 		var list = document.getElementById("tableContent");

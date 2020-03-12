@@ -1,0 +1,19 @@
+To do:
+Remove gauge jumping
+Lock the file
+Status Logs Event logs Pasizet
+https://inorganik.github.io/countUp.js/
+https://askubuntu.com/questions/243606/why-does-var-lock-tt-rss-keep-being-deleted-after-reboot
+https://bash.cyberciti.biz/guide/Sending_signal_to_Processes
+States:
+START
+FINDING_SERVERS
+TESTING_DOWNLOAD
+TESTING_UPLOAD
+FINISHED
+Perstumti i sona visa infomacija
+padaryt tarpus tarp puslapiu
+
+--gcc luaWrapper.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
+--gcc speedtest.c -shared -o libspeedtest.so -fPIC -llua5.2 -I/usr/include/lua5.2/ -lcurl
+--/usr/lib/lua/luci/ 
