@@ -28,8 +28,10 @@ define Build/Compile
 endef
 
 define Package/libspeedtest/install
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci
+	$(INSTALL_DIR) $(1)/usr/lib/lua
+	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/libspeedtest.so $(1)/usr/lib/lua/libspeedtest.so
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/speedtest.lua $(1)/usr/bin/speedtest
 endef
 
 $(eval $(call BuildPackage,libspeedtest))
