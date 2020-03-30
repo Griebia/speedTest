@@ -223,6 +223,7 @@ function flagCheck(num,flag)
     local tmp = 0;
     if flag == "--help" then
         print("usage: speedtest [options]\nAvailible options are:\n--help      shows usage of file\n-s          set silent mode\n-u [url]    set server\n-t [time]    set test time\n")
+	os.exit()
     elseif flag == "-s" then 
         silent = true;
     elseif flag == "-u" then
@@ -267,8 +268,8 @@ function getServerList()
         if body == nil or body == "" then
             os.remove("/tmp/serverlist.xml")
             error = "Could not get the server list."
-            writeData(nil,nil,nil,nil);
-            os.exit();
+            writeData(nil,nil,nil,nil)
+            os.exit()
         end
         file:close()
     else
@@ -276,8 +277,8 @@ function getServerList()
         body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
         if body == nil or body == "" then
             error = "Could not get the server list."
-            writeData(nil,nil,nil,nil);
-            os.exit();
+            writeData(nil,nil,nil,nil)
+            os.exit()
         end
         file:write(body)
         file:close()

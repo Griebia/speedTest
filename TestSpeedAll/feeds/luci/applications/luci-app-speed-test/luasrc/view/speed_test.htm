@@ -1,581 +1,608 @@
 <script src="<%=resource%>/vanilla-dataTables.js"></script>
 <%+header%>
-<style> 
-    .trRow{
-        border-radius: 5px;
-        border: 2px solid #0054A6;
-        padding: 2px;
-    }
+    <style>
+        .trRow {
+            border-radius: 5px;
+            border: 2px solid #0054A6;
+            padding: 2px;
+        }
+        
+        .trRow:hover,
+        .trRow:focus {
+            background-color: #0054A6;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .trRow:hover .selectCity,
+        .trRow:hover .selectName,
+        .trRow:hover .selectCountry,
+        .trRow:focus .selectCity,
+        .trRow:focus .selectName,
+        .trRow:focus .selectCountry {
+            color: white;
+        }
+        
+        .find-servers {
+            display: none;
+            /* Hidden by default */
+            position: fixed;
+            /* Stay in place */
+            z-index: 1;
+            /* Sit on top */
+            padding-top: 100px;
+            /* Location of the box */
+            left: 0;
+            top: 0;
+            width: 100%;
+            /* Full width */
+            height: 100%;
+            /* Full height */
+            overflow: auto;
+            /* Enable scroll if needed */
+            background-color: rgb(0, 0, 0);
+            /* Fallback color */
+            background-color: rgba(0, 0, 0, 0.4);
+            /* Black w/ opacity */
+        }
+        /* Modal Content */
+        
+        .content {
+            background-color: #fefefe;
+            border-radius: 8px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%;
+        }
+        
+        .dataTable-search {
+            position: relative;
+            width: 100%;
+        }
+        
+        .dataTable-top {
+            margin: 10px;
+        }
+        
+        .content input {
+            max-width: none !important;
+            width: 90% !important;
+            display: inline-block;
+            font-size: 15px !important;
+            vertical-align: middle;
+            padding: 5px;
+            padding-left: 24px;
+        }
+        /* The Close Button */
+        
+        .closeModal {
+            vertical-align: top;
+            color: #444444;
+            float: right;
+            font-size: 28px;
+            top: 0;
+            font-weight: bold;
+        }
+        
+        .closeModal:hover,
+        .closeModal:focus {
+            color: #0054A6;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        /* Table input */
+        
+        .selectCountry {
+            padding-left: 3px;
+            color: #0054A6;
+            font-size: 15px;
+            font-weight: bolder;
+        }
+        
+        .selectCity {
+            color: #0054A6;
+            font-size: 15px;
+            font-weight: bold;
+        }
+        
+        .selectName {
+            color: #0054A6;
+            font-size: 15px;
+            opacity: 0.75;
+            font-weight: bold;
+        }
+        
+        .table-select {
+            border-radius: 10px !important;
+            background-color: #fefefe;
+        }
+        
+        .table-select tr:last-child {
+            border: 2px solid #0054A6 !important;
+        }
+        
+        .dataTable-pagination.pagination li {
+            font-size: 15px;
+        }
+        
+        .tableHead {
+            background-color: #0054A6;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .dataTable-info {
+            padding: 7px;
+        }
+        
+        .searchIcon {
+            position: absolute;
+            left: 5px;
+            /* padding: 10px 12px; */
+            pointer-events: none;
+            top: 0.55rem;
+            width: 18px;
+        }
+        
+        .modalText {
+            display: inline-block;
+            padding: 15px;
+            font-size: medium;
+            font-weight: bold;
+        }
+    </style>
 
-    .trRow:hover,
-    .trRow:focus{
-        background-color: #0054A6;
-        text-decoration: none;
-        cursor: pointer;
-    }
-    .trRow:hover .selectCity,
-    .trRow:hover .selectName,
-    .trRow:hover .selectCountry,
-    .trRow:focus .selectCity,
-    .trRow:focus .selectName,
-    .trRow:focus .selectCountry{
-        color: white;
-    }
 
-    .find-servers{
-        display: none; /* Hidden by default */
-        position: fixed; /* Stay in place */
-        z-index: 1; /* Sit on top */
-        padding-top: 100px; /* Location of the box */
-        left: 0;
-        top: 0;
-        width: 100%; /* Full width */
-        height: 100%; /* Full height */
-        overflow: auto; /* Enable scroll if needed */
-        background-color: rgb(0,0,0); /* Fallback color */
-        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-    }
-    /* Modal Content */
-    .content {
-        background-color: #fefefe;
-        border-radius: 8px;
-        margin: auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 50%;
-    }
-    .dataTable-search{
-        position: relative;
-        width: 100%;
-    }
-
-    .dataTable-top{
-        margin: 10px;
-    }
-    .content input{
-        max-width: none !important;
-        width: 90% !important;
-        display: inline-block;
-        font-size: 15px !important;
-        vertical-align: middle;
-        padding: 5px;
-        padding-left: 24px;
-    }
-
-    /* The Close Button */
-    .closeModal {
-        vertical-align: top;
-        color: #444444;
-        float: right;
-        font-size: 28px;
-        top: 0;
-        font-weight: bold;
-    }
-
-    .closeModal:hover,
-    .closeModal:focus {
-        color: #0054A6;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    /* Table input */
-    .selectCountry{
-        padding-left: 3px;
-        color: #0054A6;
-        font-size: 15px;
-        font-weight: bolder;
-    }
-
-    .selectCity{
-        color: #0054A6;
-        font-size: 15px;
-        font-weight: bold;
-    }
-    
-    .selectName{
-        color: #0054A6;
-        font-size: 15px;
-        opacity: 0.75;
-        font-weight: bold;
-    }
-    
-    .table-select{
-        border-radius: 10px !important;
-        background-color: #fefefe;
-    }
-    
-    .table-select tr:last-child{
-        border: 2px solid #0054A6 !important;
-    }
-
-    .dataTable-pagination.pagination li{
-        font-size: 15px;
-    }
-
-    .tableHead{
-        background-color: #0054A6;
-        font-size: 18px;
-        font-weight: bold;
-        color: white;
-    }
-
-    .dataTable-info{
-        padding: 7px;
-    }
-
-    .searchIcon{
-        position: absolute;
-        left: 5px;
-        /* padding: 10px 12px; */
-        pointer-events: none;
-        top: 0.55rem;
-        width: 18px;
-    }
-    .modalText{
-        display: inline-block; padding: 15px; font-size: medium; font-weight: bold;
-    }
-
-</style>
-
-
-<div style="text-align: center;">
-    <h1 id="state">Press start to begin the speed test</h1>
-    <h2 id="downloadAvg">Download: -</h2>
-    <h2 id="uploadAvg">Upload: -</h2>
-</div>
-<div style="width: 100%; height: 63%; margin: 0; position:relative">
-    <canvas id="speedTest">
+    <div style="text-align: center;">
+        <h1 id="state">Press start to begin the speed test</h1>
+        <h2 id="downloadAvg">Download: -</h2>
+        <h2 id="uploadAvg">Upload: -</h2>
+    </div>
+    <div style="width: 100%; height: 63%; margin: 0; position:relative">
+        <canvas id="speedTest">
     Your browser does not support the canvas element.
     </canvas>
-</div>
-<div style="text-align: center; padding: 10px;">
-    <input type="submit" id="startSpeedTest" class="btn large-btn" onclick="startSpeedTest(this.id)"value="Start speed test">
-</div>
-<div style="text-align: center; padding: 10px;">
-    <input type="submit"id="changeServer" class="btn large-btn" value="Change server">
-</div>
+    </div>
+    <div style="text-align: center; padding: 10px;">
+        <input type="submit" id="startSpeedTest" class="btn large-btn" onclick="startSpeedTest(this.id)" value="Start speed test">
+    </div>
+    <div style="text-align: center; padding: 10px;">
+        <input type="submit" id="changeServer" class="btn large-btn" value="Change server">
+    </div>
 
-<!-- Modal -->
-<div id="find-servers" class="find-servers">
-    <div class="content">
-        <span class="closeModal">&times;</span>
-        <span class="modal" style="display: inline-block; padding: 15px; padding-top: 7px; font-size: medium; font-weight: bold;" id="textChooseServer">Choose a server</span>
-        <br>
-        <div id="status.eventlog.toggle" class="toggle-content">
-            <div id="loading" style="display: flex;flex-direction: column-reverse;align-items: center; margin-top: 100px; margin-bottom: 100px;">
-                <span style="position: relative; bottom: -2px;"> Loading... </span>
-                <img src="/luci-static/resources/icons/loading_small.gif" alt="Loading" style="max-width: 33px;">
-            </div>
-            <div id="tableContent" class="table-wrapper table-select" style="display: none;">
-                <table id="table">
-                    <thead class="tableHead">
-                        <tr>
-                            <td class="tableHead ">Country</td>
-                            <td class="tableHead">City</td>
-                            <td class="tableHead">Name</td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
+    <!-- Modal -->
+    <div id="find-servers" class="find-servers">
+        <div class="content">
+            <span class="closeModal">&times;</span>
+            <span class="modal" style="display: inline-block; padding: 15px; padding-top: 7px; font-size: medium; font-weight: bold;" id="textChooseServer">Choose a server</span>
+            <br>
+            <div id="status.eventlog.toggle" class="toggle-content">
+                <div id="loading" style="display: flex;flex-direction: column-reverse;align-items: center; margin-top: 100px; margin-bottom: 100px;">
+                    <span style="position: relative; bottom: -2px;"> Loading... </span>
+                    <img src="/luci-static/resources/icons/loading_small.gif" alt="Loading" style="max-width: 33px;">
+                </div>
+                <div id="tableContent" class="table-wrapper table-select" style="display: none;">
+                    <table id="table">
+                        <thead class="tableHead">
+                            <tr>
+                                <td class="tableHead ">Country</td>
+                                <td class="tableHead">City</td>
+                                <td class="tableHead">Name</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 
 
 
-<script type="text/javascript">
-    var dataTable = new DataTable("#table",{perPageSelect : false, sortable : false});
-    var textServer = null;
-    var timeToNextCall = 1000; 
-    var maxValue = 1000;
-    var canvas = document.getElementById("speedTest");
-    var ctx = canvas.getContext("2d");
-    var minAngle = Math.PI * 1.5;
-    var r = canvas.width/2 - 20;
-    var selectedServer;
-    var avgDownload = 0;
-    var avgUpload = 0;
-    var xmlDoc;
-    //Draw variables.
-    var target = 0;
-    var currentValue = 0;
+    <script type="text/javascript">
+        var dataTable = new DataTable("#table", {
+            perPageSelect: false,
+            sortable: false
+        });
+        var textServer = null;
+        var timeToNextCall = 1000;
+        var maxValue = 1000;
+        var canvas = document.getElementById("speedTest");
+        var ctx = canvas.getContext("2d");
+        var minAngle = Math.PI * 1.5;
+        var r = canvas.width / 2 - 20;
+        var selectedServer;
+        var avgDownload = 0;
+        var avgUpload = 0;
+        var xmlDoc;
+        //Draw variables.
+        var target = 0;
+        var currentValue = 0;
 
-    //Gets the server list.
-    writeToTable();
-    //Draws the speedometer.
-    draw();
-
-    //If the screen resizes then redraw.
-    window.onresize = function (){
+        //Gets the server list.
+        writeToTable();
+        //Draws the speedometer.
         draw();
-    }
 
-    function startSpeedTest(id){
-        timeToNextCall = 1000;
-        //Disable the buttons.
-        document.getElementById(id).disabled = true;
-        document.getElementById("changeServer").disabled = true;
-        //If there is a selected server sends it to the controller.
-        var link = '<%=build_url("admin/services/speed_test/start")%>';
-        if(selectedServer != null){
-            url = selectedServer.getAttribute('url');
-            parameters = "?url="+url;
-            link = link + parameters;
+        //If the screen resizes then redraw.
+        window.onresize = function() {
+            draw();
         }
-        
-        //Set the elements to indicate for the speed test start.
-        document.getElementById("state").innerHTML = "Speed test started...";
-        document.getElementById("state").setAttribute('style', 'display: ');
-        document.getElementById("downloadAvg").innerHTML = "Download: -";
-        document.getElementById("uploadAvg").innerHTML = "Upload: - ";
-        var xhr = new XMLHttpRequest();
-        
-        xhr.open("GET", link);
-        xhr.send();
 
-        xhr.onreadystatechange = function() {
-            if(this.readyState === 4 && this.status === 200) {
+        function startSpeedTest(id) {
+            timeToNextCall = 1000;
+            //Disable the buttons.
+            var startButton = document.getElementById(id);
+            startButton.disabled = true;
+            startButton.setAttribute('style', 'opacity: 0.5;');
+            var changeServerButton = document.getElementById("changeServer");
+            changeServerButton.disabled = true;
+            changeServerButton.setAttribute('style', 'opacity: 0.5;');
+            //If there is a selected server sends it to the controller.
+            var link = '<%=build_url("admin/services/speed_test/start")%>';
+            if (selectedServer != null) {
+                url = selectedServer.getAttribute('url');
+                parameters = "?url=" + url;
+                link = link + parameters;
             }
-        };
-        setTimeout(readSpeedResults,1000);      
-    }
 
-    //Calls for the json about the speed test.
-    function readSpeedResults(){
-        callJson(function(response){
-            var json = JSON.parse(response);
-            if(json.state == "FINDING_SERVER"){
-                //Write that you are looking for the closes server.
-                if(state.innerHTML != "Finding closest server..."){
-                    state.innerHTML = "Finding closest server...";
-                    textServer = null;
-                }
-                //Draw the gauge at 0.
-                if(target != 0){
-                    target = 0;
-                    draw();
-                }
-            }else if(json.state == "TESTING_DOWNLOAD"){
-                //Get the text about the server from the start of download.
-                if(textServer == null){
-                    textServer = "finding..";
-                    setTextAboutServer(json.serverURL);
-                }
-                //If the download information is not set then set it.
-                if(state.innerHTML != "Testing download from " + textServer){
-                    state.innerHTML = "Testing download from " + textServer;
-                    for(var i = 0; i < 3; i++){
-                        readSpeedResults();
+            //Set the elements to indicate for the speed test start.
+            document.getElementById("state").innerHTML = "Speed test started...";
+            document.getElementById("state").setAttribute('style', 'display: ');
+            document.getElementById("downloadAvg").innerHTML = "Download: -";
+            document.getElementById("uploadAvg").innerHTML = "Upload: - ";
+            var xhr = new XMLHttpRequest();
+
+            xhr.open("GET", link);
+            xhr.send();
+
+            xhr.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {}
+            };
+            setTimeout(readSpeedResults, 1000);
+        }
+
+        //Calls for the json about the speed test.
+        function readSpeedResults() {
+            callJson(function(response) {
+                var json = JSON.parse(response);
+                if (json.state == "FINDING_SERVER") {
+                    //Write that you are looking for the closes server.
+                    if (state.innerHTML != "Finding closest server...") {
+                        state.innerHTML = "Finding closest server...";
+                        textServer = null;
                     }
-                    timeToNextCall = 0;
+                    //Draw the gauge at 0.
+                    if (target != 0) {
+                        target = 0;
+                        draw();
+                    }
+                } else if (json.state == "TESTING_DOWNLOAD") {
+                    //Get the text about the server from the start of download.
+                    if (textServer == null) {
+                        textServer = "finding..";
+                        setTextAboutServer(json.serverURL);
+                    }
+                    //If the download information is not set then set it.
+                    if (state.innerHTML != "Testing download from " + textServer) {
+                        state.innerHTML = "Testing download from " + textServer;
+                        for (var i = 0; i < 3; i++) {
+                            readSpeedResults();
+                        }
+                        timeToNextCall = 0;
+                    }
+                    //Redraw if the average download changes.
+                    if (avgDownload != json.avgDownloadSpeed) {
+                        avgDownload = json.avgDownloadSpeed;
+                        target = convertToMbps(avgDownload);
+                        draw();
+                    }
+                } else if (json.state == "TESTING_UPLOAD") {
+                    //Set the information about the upload testing and the results of the download.
+                    if (state.innerHTML != "Testing upload to " + textServer) {
+                        state.innerHTML = "Testing upload to " + textServer;
+                        var download = document.getElementById('downloadAvg');
+                        download.innerHTML = "Download : " + Math.round(convertToMbps(avgDownload) * 100) / 100 + "Mbps";
+                    }
+                    //Redraw if the average upload changes.
+                    if (avgUpload != json.avgUploadSpeed) {
+                        avgUpload = json.avgUploadSpeed;
+                        target = convertToMbps(avgUpload);
+                        draw();
+                    }
+                } else if (json.state == "FINISHED") {
+                    //If the target is not 0 set it to zero and write about the upload results.
+                    if (target != 0) {
+                        document.getElementById("startSpeedTest").disabled = false;
+                        document.getElementById("changeServer").disabled = false;
+                        document.getElementById("startSpeedTest").setAttribute('style', " ;");
+                        document.getElementById("changeServer").setAttribute('style', " ;");
+                        state.innerHTML = "The test to " + textServer + " has finished"
+                        var upload = document.getElementById('uploadAvg');
+                        upload.innerHTML = "Upload : " + Math.round(convertToMbps(avgUpload) * 100) / 100 + "Mbps";
+                        target = 0;
+                        draw();
+                    }
+                    if (document.getElementById("changeServer").disabled || document.getElementById("startSpeedTest").disabled) {
+                        document.getElementById("startSpeedTest").disabled = false;
+                        document.getElementById("changeServer").disabled = false;
+                        document.getElementById("startSpeedTest").setAttribute('style', " ;");
+                        document.getElementById("changeServer").setAttribute('style', " ;");
+                    }
+                    return;
+                } else if (json.state == "COOLDOWN") {
+                    //Draw the gauge at 0.
+                    if (target != 0) {
+                        target = 0;
+                        draw();
+                    }
+                } else if (json.state == "ERROR") {
+                    if (state.innerHTML != "Error: " + json.error) {
+                        state.innerHTML = "Error: " + json.error;
+                        state.style.color = "red";
+                        document.getElementById("startSpeedTest").disabled = false;
+                        document.getElementById("changeServer").disabled = false;
+                        document.getElementById("startSpeedTest").setAttribute('style', " ;");
+                        document.getElementById("changeServer").setAttribute('style', " ;");
+                    }
+                    //Draw the gauge at 0.
+                    if (target != 0) {
+                        target = 0;
+                        draw();
+                    }
+                    return;
                 }
-                //Redraw if the average download changes.
-                if(avgDownload != json.avgDownloadSpeed){
-                    avgDownload = json.avgDownloadSpeed;
-                    target = convertToMbps(avgDownload);
-                    draw();
-                }
-            }else if(json.state == "TESTING_UPLOAD"){
-                //Set the information about the upload testing and the results of the download.
-                if(state.innerHTML != "Testing upload to " + textServer){
-                    state.innerHTML = "Testing upload to " + textServer;
-                    var download = document.getElementById('downloadAvg');
-                    download.innerHTML = "Download : " + Math.round(convertToMbps(avgDownload) * 100) / 100 + "Mbps";
-                }
-                //Redraw if the average upload changes.
-                if(avgUpload != json.avgUploadSpeed){
-                    avgUpload = json.avgUploadSpeed;
-                    target = convertToMbps(avgUpload);
-                    draw();
-                }
-            }else if(json.state == "FINISHED"){
-                //If the target is not 0 set it to zero and write about the upload results.
-                if(target != 0){
-                    document.getElementById("startSpeedTest").disabled = false;
-                    document.getElementById("changeServer").disabled = false;
-                    state.innerHTML = "The test to " + textServer + " has finished"
-                    var upload = document.getElementById('uploadAvg');
-                    upload.innerHTML = "Upload : " + Math.round(convertToMbps(avgUpload) * 100) / 100 + "Mbps";
-                    target = 0;
-                    draw();
-                }
-                if(document.getElementById("changeServer").disabled || document.getElementById("startSpeedTest").disabled){
-                    document.getElementById("startSpeedTest").disabled = false;
-                    document.getElementById("changeServer").disabled = false;
-                }
-                return;
-            }else if(json.state == "COOLDOWN"){
-                //Draw the gauge at 0.
-                if(target != 0){
-                    target = 0;
-                    draw();
-                }
-            }else if(json.state == "ERROR"){
-                if(state.innerHTML != "Error: " + json.error){
-                    state.innerHTML = "Error: " + json.error;
-                    state.style.color = "red";
-                    document.getElementById("startSpeedTest").disabled = false;
-                    document.getElementById("changeServer").disabled = false;
-                }
-                //Draw the gauge at 0.
-                if(target != 0){
-                    target = 0;
-                    draw();
-                }
-                return;
-            }
 
-            setTimeout(readSpeedResults,timeToNextCall);
-        });
-    }
-
-    //Set the text about server for an url.
-    function setTextAboutServer(url){
-        var servers = xmlDoc.getElementsByTagName('server');
-        for(var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++){
-            if(servers[i].getAttribute('url').includes(url)){
-                var city = servers[i].getAttribute('name');
-                var sponsor = servers[i].getAttribute('sponsor');
-                var country = servers[i].getAttribute('country');
-                textServer = sponsor + " from " + city + ", " + country;
-                break;
-            }
+                setTimeout(readSpeedResults, timeToNextCall);
+            });
         }
-    }
 
-    //Calls for the speedtest.json file form backend.
-    function callJson(callback){
-        var state = document.getElementById('state');
-        var directory = '<%=build_url("admin/services/speed_test/getJSON")%>';
-        var xobj = new XMLHttpRequest();
-        xobj.open('GET', directory, true); // Replace 'my_data' with the path to your file
-        xobj.onreadystatechange = function () {
-            if (xobj.readyState == 4 && xobj.status == "200") {
-                // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
-                callback(xobj.responseText);
-            }
-        };
-        xobj.send(null);
-    }
-
-    //Converts the speed to Mbps.
-    function convertToMbps(value){
-        return value/125000;
-    }
-    
-    /*Draw functions*/
-    
-    //Main draw function. 
-    function draw(){
-        var val = currentValue;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        var angle = Math.PI;
-        if(val < maxValue){
-            angle = Math.PI*val/maxValue;
-        }
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.width  = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
-        r = canvas.width/2 - 50;
-        drawGauge(angle);
-        drawPointer(angle);
-        drawGaugeSpeeds();
-        drawSpeed(target);
-        if(Math.round(target*10) != Math.round(currentValue*10)){
-            currentValue += inclineCalculation(target, val);
-            window.requestAnimationFrame(draw);
-        }
-    }
-
-    function inclineCalculation(target, val){
-        var dif = target - val;
-        if(Math.abs(dif) > 0.1){
-            return dif/50;
-        } else if (dif > 0){
-            return 0.01;
-        } else if (dif < 0){
-            return -0.01;
-        }
-    }
-
-    function drawGauge(angle){
-        angle = Math.PI + angle;
-        ctx.lineWidth = 20;
-        ctx.strokeStyle = "#0054A6";
-        
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height, r, angle, 0);
-        ctx.globalAlpha = 0.2;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height, r, Math.PI, angle);
-        ctx.globalAlpha = 1;
-        ctx.stroke();
-    }
-
-    function drawPointer(angle){
-        var offset = canvas.width/20;
-        angle = minAngle - angle;
-        ctx.beginPath();
-        ctx.globalAlpha = 1;
-        var coord = getCoordinates(angle,r);
-        var coord1 = getCoordinates(angle+0.5*Math.PI, 20);
-        var coord2 = getCoordinates(angle-0.5*Math.PI, 20);
-        ctx.moveTo(coord1[0], coord1[1]);
-        ctx.lineTo(coord[0], coord[1]);
-        ctx.lineTo(coord2[0], coord2[1]);
-        var grd = ctx.createLinearGradient(coord[0], coord[1], canvas.width/2, canvas.height);
-        grd.addColorStop(0, "#0054A6");
-        grd.addColorStop(1, "white");
-        ctx.fillStyle = grd;
-        ctx.fill()
-    }
-
-    function drawGaugeSpeeds(){
-        ctx.fillStyle = "#000000";
-        var fontSize = 0.04;
-        var size = canvas.width * fontSize;
-        for(i = 0; i <= 10; i++){
-            ctx.font = size + "px Arial";
-            var angle = Math.PI * 1.5 - Math.PI*i/10;
-            var offset = canvas.width * 0.06;
-            var coord = getCoordinates(angle, r - offset);
-            ctx.textAlign = "center";
-            ctx.fillText(i*100,coord[0],coord[1]);
-        }   
-    }
-
-    function drawSpeed(value){
-        ctx.fillStyle = "#000000";
-        var fontSize = 0.04;
-        var size = canvas.width * fontSize;
-        ctx.font = size + "px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(Math.round(value * 100) / 100,canvas.width/2, canvas.height);
-    }
-
-    function getCoordinates(angle, rad){
-        return[canvas.width/2 + rad * Math.sin(angle), canvas.height + rad * Math.cos(angle)]
-    }
-    
-    /*Modal functions */
-    var newRows = [];
-
-    //Add server elements to an array.
-    function addItem(country, city, name){
-        var spanCountry = document.createElement("span");
-        var spanCity = document.createElement("span");
-        var spanName= document.createElement("span");
-        spanCountry.setAttribute('class','selectCountry');
-        spanCity.setAttribute('class','selectCity');
-        spanName.setAttribute('class','selectName');
-        spanCountry.appendChild(document.createTextNode(country));
-        spanCity.appendChild(document.createTextNode(city));
-        spanName.appendChild(document.createTextNode(name));
-        var info = [spanCountry.outerHTML, spanCity.outerHTML , spanName.outerHTML];
-        newRows.push(info);
-    }
-
-    //Select function from table.
-    function select(id){
-        var text = document.getElementById("textChooseServer");
-        var servers = xmlDoc.getElementsByTagName('server');
-        for(var i= 0; i < servers.length;i++){
-            if(servers[i].getAttribute('id') === id){
-                var city = servers[i].getAttribute('name');
-                var sponsor = servers[i].getAttribute('sponsor');
-                var country = servers[i].getAttribute('country');
-                selectedServer = servers[i];
-                textServer = sponsor + " from " + city + ", " + country;
-                text.innerHTML = "Selected server is " + textServer;
-                break;
-            }
-        }
-        state.setAttribute('style','color: ;');
-        state.innerHTML = "Press start to begin the speed test to " + textServer;
-        modal.style.display = "none";
-    }
-
-    function writeToTable(){
-        getServerList(function(response){
-            let parser = new DOMParser();
-            xmlDoc = parser.parseFromString(response,"application/xml");
+        //Set the text about server for an url.
+        function setTextAboutServer(url) {
             var servers = xmlDoc.getElementsByTagName('server');
-            //Put the data to the table.
-            for(var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++){ 
-                var city = servers[i].getAttribute('name');
-                var country = servers[i].getAttribute('country');
-                var sponsor = servers[i].getAttribute('sponsor');
-                addItem(country, city ,sponsor);
+            for (var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++) {
+                if (servers[i].getAttribute('url').includes(url)) {
+                    var city = servers[i].getAttribute('name');
+                    var sponsor = servers[i].getAttribute('sponsor');
+                    var country = servers[i].getAttribute('country');
+                    textServer = sponsor + " from " + city + ", " + country;
+                    break;
+                }
             }
-            dataTable.rows().add(newRows);
-            //Set attribute for the table.
-            for(var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++)
-            {
-                var id = servers[i].getAttribute('id');
-                dataTable.activeRows[i].setAttribute('id', id);
-                dataTable.activeRows[i].setAttribute('onclick', 'select(this.id);');
-                dataTable.activeRows[i].setAttribute('class', 'trRow');
+        }
+
+        //Calls for the speedtest.json file form backend.
+        function callJson(callback) {
+            var state = document.getElementById('state');
+            var directory = '<%=build_url("admin/services/speed_test/getJSON")%>';
+            var xobj = new XMLHttpRequest();
+            xobj.open('GET', directory, true); // Replace 'my_data' with the path to your file
+            xobj.onreadystatechange = function() {
+                if (xobj.readyState == 4 && xobj.status == "200") {
+                    // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+                    callback(xobj.responseText);
+                }
+            };
+            xobj.send(null);
+        }
+
+        //Converts the speed to Mbps.
+        function convertToMbps(value) {
+            return value / 125000;
+        }
+
+        /*Draw functions*/
+
+        //Main draw function. 
+        function draw() {
+            var val = currentValue;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            var angle = Math.PI;
+            if (val < maxValue) {
+                angle = Math.PI * val / maxValue;
             }
-            hideLoading();
-        });
-        
-    }
-
-    //Hide the loading element.
-    function hideLoading(){
-        var searchIcon = document.createElement("IMG");
-        searchIcon.src = "/luci-static/resources/search.svg";
-        searchIcon.setAttribute('class', 'searchIcon');
-        var search = document.getElementsByClassName("dataTable-search")[0]
-        search.insertBefore(searchIcon,search.firstChild);
-		var e = document.getElementById("loading");
-		e.setAttribute('style', 'display: none;');
-		var list = document.getElementById("tableContent");
-		list.setAttribute('style', 'display: ');
-    }
-    
-    //Callback for the server list.
-    function getServerList(callback){
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", '<%=build_url("admin/services/speed_test/getServers")%>', true);
-        xhr.withCredentials = true;
-        xhr.send();
-
-        xhr.onreadystatechange = function() {
-            if(this.readyState === 4 && this.status === 200) {
-                callback(xhr.responseText);
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            r = canvas.width / 2 - 50;
+            drawGauge(angle);
+            drawPointer(angle);
+            drawGaugeSpeeds();
+            drawSpeed(target);
+            if (Math.round(target * 10) != Math.round(currentValue * 10)) {
+                currentValue += inclineCalculation(target, val);
+                window.requestAnimationFrame(draw);
             }
-        };
-    }
-    
-    // Get the modal
-    var modal = document.getElementById("find-servers");
+        }
 
-    // Get the button that opens the modal
-    var btn = document.getElementById("changeServer");
-    // Get the <span> element that closes the modal
-    var span = document.getElementsByClassName("closeModal")[0];  
+        function inclineCalculation(target, val) {
+            var dif = target - val;
+            if (Math.abs(dif) > 0.1) {
+                return dif / 50;
+            } else if (dif > 0) {
+                return 0.01;
+            } else if (dif < 0) {
+                return -0.01;
+            }
+        }
 
-    // When the user clicks the button, open the modal 
-    btn.onclick = function() {
-        modal.style.display = "block";
-    }
+        function drawGauge(angle) {
+            angle = Math.PI + angle;
+            ctx.lineWidth = 20;
+            ctx.strokeStyle = "#0054A6";
 
-    // When the user clicks on <span> (x), close the modal
-    span.onclick = function() {
-        modal.style.display = "none";
-    }
-    // When the user clicks anywhere outside of the modal, close it
-    window.onclick = function(event) {
-        if (event.target == modal) {
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height, r, angle, 0);
+            ctx.globalAlpha = 0.2;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height, r, Math.PI, angle);
+            ctx.globalAlpha = 1;
+            ctx.stroke();
+        }
+
+        function drawPointer(angle) {
+            var offset = canvas.width / 20;
+            angle = minAngle - angle;
+            ctx.beginPath();
+            ctx.globalAlpha = 1;
+            var coord = getCoordinates(angle, r);
+            var coord1 = getCoordinates(angle + 0.5 * Math.PI, 20);
+            var coord2 = getCoordinates(angle - 0.5 * Math.PI, 20);
+            ctx.moveTo(coord1[0], coord1[1]);
+            ctx.lineTo(coord[0], coord[1]);
+            ctx.lineTo(coord2[0], coord2[1]);
+            var grd = ctx.createLinearGradient(coord[0], coord[1], canvas.width / 2, canvas.height);
+            grd.addColorStop(0, "#0054A6");
+            grd.addColorStop(1, "white");
+            ctx.fillStyle = grd;
+            ctx.fill()
+        }
+
+        function drawGaugeSpeeds() {
+            ctx.fillStyle = "#000000";
+            var fontSize = 0.04;
+            var size = canvas.width * fontSize;
+            for (i = 0; i <= 10; i++) {
+                ctx.font = size + "px Arial";
+                var angle = Math.PI * 1.5 - Math.PI * i / 10;
+                var offset = canvas.width * 0.06;
+                var coord = getCoordinates(angle, r - offset);
+                ctx.textAlign = "center";
+                ctx.fillText(i * 100, coord[0], coord[1]);
+            }
+        }
+
+        function drawSpeed(value) {
+            ctx.fillStyle = "#000000";
+            var fontSize = 0.04;
+            var size = canvas.width * fontSize;
+            ctx.font = size + "px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(Math.round(value * 100) / 100, canvas.width / 2, canvas.height);
+        }
+
+        function getCoordinates(angle, rad) {
+            return [canvas.width / 2 + rad * Math.sin(angle), canvas.height + rad * Math.cos(angle)]
+        }
+
+        /*Modal functions */
+        var newRows = [];
+
+        //Add server elements to an array.
+        function addItem(country, city, name) {
+            var spanCountry = document.createElement("span");
+            var spanCity = document.createElement("span");
+            var spanName = document.createElement("span");
+            spanCountry.setAttribute('class', 'selectCountry');
+            spanCity.setAttribute('class', 'selectCity');
+            spanName.setAttribute('class', 'selectName');
+            spanCountry.appendChild(document.createTextNode(country));
+            spanCity.appendChild(document.createTextNode(city));
+            spanName.appendChild(document.createTextNode(name));
+            var info = [spanCountry.outerHTML, spanCity.outerHTML, spanName.outerHTML];
+            newRows.push(info);
+        }
+
+        //Select function from table.
+        function select(id) {
+            var text = document.getElementById("textChooseServer");
+            var servers = xmlDoc.getElementsByTagName('server');
+            for (var i = 0; i < servers.length; i++) {
+                if (servers[i].getAttribute('id') === id) {
+                    var city = servers[i].getAttribute('name');
+                    var sponsor = servers[i].getAttribute('sponsor');
+                    var country = servers[i].getAttribute('country');
+                    selectedServer = servers[i];
+                    textServer = sponsor + " from " + city + ", " + country;
+                    text.innerHTML = "Selected server is " + textServer;
+                    break;
+                }
+            }
+            state.setAttribute('style', 'color: ;');
+            state.innerHTML = "Press start to begin the speed test to " + textServer;
             modal.style.display = "none";
         }
-    }
-</script>                                       
-<%+footer%>
+
+        function writeToTable() {
+            getServerList(function(response) {
+                let parser = new DOMParser();
+                xmlDoc = parser.parseFromString(response, "application/xml");
+                var servers = xmlDoc.getElementsByTagName('server');
+                //Put the data to the table.
+                for (var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++) {
+                    var city = servers[i].getAttribute('name');
+                    var country = servers[i].getAttribute('country');
+                    var sponsor = servers[i].getAttribute('sponsor');
+                    addItem(country, city, sponsor);
+                }
+                dataTable.rows().add(newRows);
+                //Set attribute for the table.
+                for (var i = 0; i < xmlDoc.getElementsByTagName('server').length; i++) {
+                    var id = servers[i].getAttribute('id');
+                    dataTable.activeRows[i].setAttribute('id', id);
+                    dataTable.activeRows[i].setAttribute('onclick', 'select(this.id);');
+                    dataTable.activeRows[i].setAttribute('class', 'trRow');
+                }
+                hideLoading();
+            });
+
+        }
+
+        //Hide the loading element.
+        function hideLoading() {
+            var searchIcon = document.createElement("IMG");
+            searchIcon.src = "/luci-static/resources/search.svg";
+            searchIcon.setAttribute('class', 'searchIcon');
+            var search = document.getElementsByClassName("dataTable-search")[0]
+            search.insertBefore(searchIcon, search.firstChild);
+            var e = document.getElementById("loading");
+            e.setAttribute('style', 'display: none;');
+            var list = document.getElementById("tableContent");
+            list.setAttribute('style', 'display: ');
+        }
+
+        //Callback for the server list.
+        function getServerList(callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", '<%=build_url("admin/services/speed_test/getServers")%>', true);
+            xhr.withCredentials = true;
+            xhr.send();
+
+            xhr.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    callback(xhr.responseText);
+                }
+            };
+        }
+
+        // Get the modal
+        var modal = document.getElementById("find-servers");
+
+        // Get the button that opens the modal
+        var btn = document.getElementById("changeServer");
+        // Get the <span> element that closes the modal
+        var span = document.getElementsByClassName("closeModal")[0];
+
+        // When the user clicks the button, open the modal 
+        btn.onclick = function() {
+            modal.style.display = "block";
+        }
+
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function() {
+                modal.style.display = "none";
+            }
+            // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+    <%+footer%>
