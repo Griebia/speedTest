@@ -55,6 +55,7 @@ function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
 end
 
 writeToJSON(nil,nil,nil,nil)
+
 -- Gets the current ip addresses latitude and longitude.
 function getCurrentLocation()
     -- Getting the json file form https://api.myip.com with IP.
@@ -282,7 +283,6 @@ function getServerList()
         file:write(body)
         file:close()
     end
-
     return body
 end
 

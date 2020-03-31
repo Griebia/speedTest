@@ -210,7 +210,7 @@
         });
         var textServer = null;
         var timeToNextCall = 1000;
-        var maxValue = 1000;
+        var maxValue = 100;
         var canvas = document.getElementById("speedTest");
         var ctx = canvas.getContext("2d");
         var minAngle = Math.PI * 1.5;
@@ -223,7 +223,13 @@
         var target = 0;
         var currentValue = 0;
 
-        //Gets the server list.
+
+        callInternetStatus(function(response) {
+            if (response == "false") {
+                state.innerHTML = "Error: Internet connection was not found.";
+                state.style.color = "red";
+            }
+        });
         writeToTable();
         //Draws the speedometer.
         draw();
@@ -263,7 +269,7 @@
             xhr.onreadystatechange = function() {
                 if (this.readyState === 4 && this.status === 200) {}
             };
-            setTimeout(readSpeedResults, 1000);
+            setTimeout(readSpeedResults, 2000);
         }
 
         //Calls for the json about the speed test.
@@ -377,8 +383,20 @@
 
         //Calls for the speedtest.json file form backend.
         function callJson(callback) {
-            var state = document.getElementById('state');
             var directory = '<%=build_url("admin/services/speed_test/getJSON")%>';
+            var xobj = new XMLHttpRequest();
+            xobj.open('GET', directory, true); // Replace 'my_data' with the path to your file
+            xobj.onreadystatechange = function() {
+                if (xobj.readyState == 4 && xobj.status == "200") {
+                    // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+                    callback(xobj.responseText);
+                }
+            };
+            xobj.send(null);
+        }
+
+        function callInternetStatus(callback) {
+            var directory = '<%=build_url("admin/services/speed_test/checkInternetConnection")%>';
             var xobj = new XMLHttpRequest();
             xobj.open('GET', directory, true); // Replace 'my_data' with the path to your file
             xobj.onreadystatechange = function() {
@@ -474,7 +492,7 @@
                 var offset = canvas.width * 0.06;
                 var coord = getCoordinates(angle, r - offset);
                 ctx.textAlign = "center";
-                ctx.fillText(i * 100, coord[0], coord[1]);
+                ctx.fillText(i * 10, coord[0], coord[1]);
             }
         }
 
@@ -576,7 +594,14 @@
 
             xhr.onreadystatechange = function() {
                 if (this.readyState === 4 && this.status === 200) {
-                    callback(xhr.responseText);
+                    if (xhr.response == "Error") {
+                        var chooseText = document.getElementById("textChooseServer");
+                        chooseText.innerText = "Error: There was a problem getting the server list.";
+                        chooseText.style.color = "red";
+                        hideLoading();
+                    } else {
+                        callback(xhr.responseText);
+                    }
                 }
             };
         }

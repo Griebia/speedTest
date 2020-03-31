@@ -3,11 +3,13 @@
 #include <curl/curl.h>
 #include <math.h>
 #include <time.h>
+#include <sys/statvfs.h>
+#include <unistd.h>
 #include <string.h>
 #include <signal.h>
-#include <lua5.2/lua.h>
-#include <lua5.2/lualib.h>
-#include <lua5.2/lauxlib.h>
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
 
 #if LIBCURL_VERSION_NUM >= 0x073d00
 /* In libcurl 7.61.0, support was added for extracting the time in plain

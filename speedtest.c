@@ -40,9 +40,10 @@ int luaopen_libspeedtest(lua_State *L)
   signal(SIGINT, handle_sigint);
   send_signals();
   create_pid();
-	luaL_newlib(L, mylib);
+	luaL_openlib(L, "mylib", mylib, 0);
 	return 1;
 }
+
 
 //Initialising a string.
 void init_string(struct string *s) 
