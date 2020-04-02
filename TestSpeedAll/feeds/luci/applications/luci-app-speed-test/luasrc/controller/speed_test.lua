@@ -5,6 +5,7 @@ function index()
 	entry({"admin", "services", "speed_test", "getJSON"}, call("getJSON"))
 	entry({"admin", "services", "speed_test", "start"}, call("startSpeedTest"))
 	entry({"admin", "services", "speed_test", "getServers"}, call("getServers"))
+	entry({"admin", "services", "speed_test", "getIp"}, call("getIp"))
 end
 
 function getJSON()
@@ -23,6 +24,28 @@ function startSpeedTest()
 	end
 	luci.util.perror("Started speedtest")
 	luci.sys.call(call)
+end
+
+function getIp()
+	local socket = require("socket")
+	local connection = socket.tcp()
+	url = luci.http.formvalue("url")
+	if string.match(url,":") then
+		i,j = string.find(url,":")
+		url = string.sub(url,0,i-1)
+	end
+	local connection = socket.tcp()
+    connection:settimeout(1000)
+	local result = connection:connect(url, 80)
+	if result then
+        local ip, port = connection:getpeername()
+		luci.util.perror("Getting ip address")
+		connection:close()
+		luci.http.write(ip)
+	else
+		luci.http.write("Error");
+    end
+	
 end
 
 function getServers()

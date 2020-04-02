@@ -151,28 +151,49 @@
             font-size: medium;
             font-weight: bold;
         }
+        
+        .icon-size {
+            display: inline-block;
+            vertical-align: text-bottom;
+            height: 1.5em;
+            width: 1.5em;
+        }
     </style>
     <div class="white-box content-box">
-        <h3 class="content-title" onclick="toggleContent(this, 'speed.test.toggle')" style="pointer-events: all;">
+        <h3 class="content-title" onclick="toggleContent(this, 'speed.test.toggle');" style="pointer-events: all;">
             <div class="toggle-arrow expanded"><img src="/luci-static/default/img/icons/arrow-toggle.svg"></div>
             Speed Test
         </h3>
         <div id="speed.test.toggle" class="toggle-content" style="width:100%; height: 100%; display: block;">
             <div style="text-align: center;">
                 <h1 id="state">Press start to begin the speed test</h1>
-                <h2 id="downloadAvg">Download: -</h2>
-                <h2 id="uploadAvg">Upload: -</h2>
+                <div style="margin: 5px;">
+                    <img src="/luci-static/resources/download.svg" class="icon-size" alt="Download results">
+                    <h2 id="downloadAvg" style="display: inline-block;">Download: -</h2>
+                </div>
+                <div style="margin: 5px;">
+                    <img src="/luci-static/resources/upload.svg" class="icon-size" alt="Upload results">
+                    <h2 id="uploadAvg" style="display: inline-block;">Upload: -</h2>
+                </div>
             </div>
-            <div style="width: 100%; height: 100%; margin: 5px; position:relative">
-                <canvas id="speedTest">
-    Your browser does not support the canvas element.
-    </canvas>
+            <div style=" width: 100%; height: 65%; margin: 5px; position:relative;">
+                <canvas style="min-height: 200px;" id="speedTest">Your browser does not support the canvas element.</canvas>
             </div>
             <div style="text-align: center; padding: 10px;">
                 <input type="submit" id="startSpeedTest" class="btn large-btn" onclick="startSpeedTest(this.id)" value="Start speed test">
             </div>
             <div style="text-align: center; padding: 10px;">
                 <input type="submit" id="changeServer" class="btn large-btn" value="Change server">
+            </div>
+            <div style="text-align: center;">
+                <div style="margin: 5px;">
+                    <img src="/luci-static/resources/globe.svg" class="icon-size" alt="Host of server">
+                    <h2 id="sponsor" style="display: inline-block;"> - </h2>
+                </div>
+                <div style="margin: 5px;">
+                    <img src="/luci-static/resources/ip.svg" class="icon-size" alt="Download results">
+                    <h2 id="ip" style="display: inline-block;"> - </h2>
+                </div>
             </div>
 
             <!-- Modal -->
@@ -391,7 +412,10 @@
                     var city = servers[i].getAttribute('name');
                     var sponsor = servers[i].getAttribute('sponsor');
                     var country = servers[i].getAttribute('country');
+                    var host = servers[i].getAttribute('host');
+                    setIpAdress(host);
                     textServer = sponsor + " from " + city + ", " + country;
+                    selectedServer = servers[i];
                     break;
                 }
             }
@@ -429,7 +453,7 @@
             canvas.style.width = '100%';
             canvas.style.height = '100%';
             canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetWidth * 0.5;
+            canvas.height = canvas.offsetWidth * 0.47;
             r = canvas.width / 2 - 50;
             drawGauge(angle);
             drawPointer(angle);
@@ -539,6 +563,8 @@
                     var city = servers[i].getAttribute('name');
                     var sponsor = servers[i].getAttribute('sponsor');
                     var country = servers[i].getAttribute('country');
+                    var host = servers[i].getAttribute('host');
+                    setIpAdress(host);
                     selectedServer = servers[i];
                     textServer = sponsor + " from " + city + ", " + country;
                     text.innerHTML = "Selected server is " + textServer;
@@ -613,6 +639,36 @@
                         chooseText.style.color = "red";
                         var e = document.getElementById("loading");
                         e.setAttribute('style', 'display: none;');
+                    } else {
+                        callback(xhr.responseText);
+                    }
+                }
+                canStart = true;
+            };
+        }
+
+        function setIpAdress(url) {
+            getIpAddress(url, function(callback) {
+                sponsor = selectedServer.getAttribute('sponsor');
+                document.getElementById("sponsor").innerHTML = sponsor;
+                document.getElementById("ip").innerHTML = callback;
+            });
+        }
+
+        function getIpAddress(url, callback) {
+            var xhr = new XMLHttpRequest();
+            var link = '<%=build_url("admin/services/speed_test/getIp")%>';
+            parameters = "?url=" + url;
+            link = link + parameters;
+
+            xhr.open("GET", link, true);
+            xhr.withCredentials = true;
+            xhr.send();
+            xhr.onreadystatechange = function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    if (xhr.response == "Error") {
+                        state.innerText = "Error: Internet connection is required to use this application.";
+                        state.style.color = "red";
                     } else {
                         callback(xhr.responseText);
                     }
