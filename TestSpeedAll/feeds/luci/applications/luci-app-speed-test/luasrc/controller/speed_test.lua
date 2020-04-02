@@ -5,20 +5,6 @@ function index()
 	entry({"admin", "services", "speed_test", "getJSON"}, call("getJSON"))
 	entry({"admin", "services", "speed_test", "start"}, call("startSpeedTest"))
 	entry({"admin", "services", "speed_test", "getServers"}, call("getServers"))
-	entry({"admin", "services", "speed_test", "checkInternetConnection"}, call("checkInternetConnection")) 
-end
-
-function checkInternetConnection()
-	local socket = require("socket");
-	local connection = socket.tcp()
-    connection:settimeout(1000)
-    local result = connection:connect("google.com", 80)
-    connection:close()
-    if result then
-		luci.http.write("true")
-		return
-    end
-    luci.http.write("false")
 end
 
 function getJSON()
@@ -56,7 +42,7 @@ function getServers()
 		local libspeedtest = require("libspeedtest")
         body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
         if body == nil or body == "" then
-			luci.util.perror("The serverlist was not found")
+			luci.util.perror("The server list could not be downloaded")
 			luci.http.write("Error");
 			return
         end

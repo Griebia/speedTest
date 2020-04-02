@@ -337,6 +337,8 @@ if(#arg > 0) then
 end
 
 --Looks for internet connection
+state = "CHECKING_CONNECTION"
+writeData(nil, nil, nil, nil)
 if not cheakConnection("www.google.com") then
     error = "Internet connection is required to use this application."
     writeData(nil, nil, nil, nil)
