@@ -389,7 +389,7 @@ end
 
 state = "COOLDOWN"
 writeToJSON(nil,nil,nil,nil)
-socket.sleep(3);
+socket.sleep(3.75);
 state = "TESTING_UPLOAD"
 
 isError, res = libspeedtest.testspeed(server..":8080/speedtest/upload.php", time, true)
