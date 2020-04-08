@@ -1,11 +1,5 @@
 <%+header%>
     <style>
-        .trRow {
-            border-radius: 5px;
-            border: 2px solid #0054A6;
-            padding: 2px;
-        }
-        
         .trRow:hover,
         .trRow:focus {
             background-color: #0054A6;
@@ -13,12 +7,8 @@
             cursor: pointer;
         }
         
-        .trRow:hover .selectCity,
-        .trRow:hover .selectName,
-        .trRow:hover .selectCountry,
-        .trRow:focus .selectCity,
-        .trRow:focus .selectName,
-        .trRow:focus .selectCountry {
+        .trRow:hover span,
+        .trRow:focus span {
             color: white;
         }
         
@@ -53,26 +43,26 @@
             padding: 20px;
             border: 1px solid #888;
             width: 50%;
-            min-width: 300px;
+            min-width: 320px;
         }
         
         .dataTable-search {
-            position: relative;
-            width: 100%;
+            display: inline-block;
+            width: 100px;
+            margin-left: auto;
         }
         
         .dataTable-top {
             margin: 10px;
+            display: flex;
+        }
+        
+        .dataTable-dropdown {
+            display: inline-block;
         }
         
         .modal-content input {
-            max-width: none !important;
-            width: 100% !important;
             display: inline-block;
-            font-size: 15px !important;
-            vertical-align: middle;
-            padding: 5px;
-            padding-left: 24px;
         }
         /* The Close Button */
         
@@ -95,22 +85,11 @@
         
         .selectCountry {
             padding-left: 3px;
-            color: #0054A6;
-            font-size: 15px;
             font-weight: bolder;
         }
         
-        .selectCity {
-            color: #0054A6;
-            font-size: 15px;
-            font-weight: bold;
-        }
-        
         .selectName {
-            color: #0054A6;
-            font-size: 15px;
             opacity: 0.75;
-            font-weight: bold;
         }
         
         .table-select {
@@ -118,32 +97,16 @@
             background-color: #fefefe;
         }
         
-        .table-select tr:last-child {
-            border: 2px solid #0054A6 !important;
-        }
-        
-        .dataTable-pagination.pagination li {
-            font-size: 15px;
-        }
-        
         .tableHead {
-            background-color: #0054A6;
-            font-size: 18px;
-            font-weight: bold;
-            color: white;
+            font-size: 1.25rem;
+            text-align: left !important;
+            font-family: "Oswald", sans-serif;
+            font-weight: normal;
+            text-transform: uppercase;
         }
         
         .dataTable-info {
             padding: 7px;
-        }
-        
-        .searchIcon {
-            position: absolute;
-            left: 5px;
-            /* padding: 10px 12px; */
-            pointer-events: none;
-            top: 0.55rem;
-            width: 18px;
         }
         
         .modalText {
@@ -156,16 +119,49 @@
         .icon-size {
             display: inline-block;
             vertical-align: text-bottom;
-            height: max(1em, min(2vw, 1.5em));
-            width: max(1em, min(2vw, 1.5em));
-        }
-        
-        h1 {
-            font-size: max(1.25em, min(3vw, 2em));
         }
         
         h2 {
-            font-size: max(1em, min(2vw, 1.5em));
+            display: inline-block;
+        }
+        
+        @media all and (min-width: 800px) {
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+            .icon-size {
+                height: 1.5em;
+                width: 1.5em;
+            }
+        }
+        
+        @media all and (max-width: 799px) and (min-width: 500px) {
+            h1 {
+                font-size: 3vw;
+            }
+            h2 {
+                font-size: 2vw;
+            }
+            .icon-size {
+                height: 2vw;
+                width: 2vw;
+            }
+        }
+        
+        @media all and (max-width: 499px) {
+            h1 {
+                font-size: 1.25em;
+            }
+            h2 {
+                font-size: 1em;
+            }
+            .icon-size {
+                height: 1em;
+                width: 1em;
+            }
         }
     </style>
     <div class="white-box content-box">
@@ -178,11 +174,11 @@
                 <h1 id="state">Press start to begin the speed test</h1>
                 <div style="margin: 5px;">
                     <img src="/luci-static/resources/download.svg" class="icon-size" alt="Download results">
-                    <h2 id="downloadAvg" style="display: inline-block;">Download: -</h2>
+                    <h2 id="downloadAvg">Download: -</h2>
                 </div>
                 <div style="margin: 5px;">
                     <img src="/luci-static/resources/upload.svg" class="icon-size" alt="Upload results">
-                    <h2 id="uploadAvg" style="display: inline-block;">Upload: -</h2>
+                    <h2 id="uploadAvg">Upload: -</h2>
                 </div>
             </div>
             <div id="canvasDiv" style=" width: 100%; margin: 5px; position:relative;">
@@ -197,11 +193,11 @@
             <div style="text-align: center;">
                 <div style="margin: 5px;">
                     <img src="/luci-static/resources/globe.svg" class="icon-size" alt="Host of server">
-                    <h2 id="sponsor" style="display: inline-block;"> - </h2>
+                    <h2 id="sponsor"> - </h2>
                 </div>
                 <div style="margin: 5px;">
                     <img src="/luci-static/resources/ip.svg" class="icon-size" alt="Download results">
-                    <h2 id="ip" style="display: inline-block;"> - </h2>
+                    <h2 id="ip"> - </h2>
                 </div>
             </div>
 
@@ -237,8 +233,12 @@
     <script src="<%=resource%>/vanilla-dataTables.js"></script>
     <script type="text/javascript">
         var dataTable = new DataTable("#table", {
-            perPageSelect: false,
-            sortable: false
+            sortable: false,
+            labels: {
+                perPage: "Servers per page {select}",
+                noRows: "",
+                info: ""
+            }
         });
         var textServer = null;
         var timeToNextCall = 1000;
@@ -623,11 +623,11 @@
         }
         //Hide the loading element.
         function hideLoading() {
-            var searchIcon = document.createElement("IMG");
-            searchIcon.src = "/luci-static/resources/search.svg";
-            searchIcon.setAttribute('class', 'searchIcon');
-            var search = document.getElementsByClassName("dataTable-search")[0]
-            search.insertBefore(searchIcon, search.firstChild);
+            // var searchIcon = document.createElement("IMG");
+            // searchIcon.src = "/luci-static/resources/search.svg";
+            // searchIcon.setAttribute('class', 'searchIcon');
+            // var search = document.getElementsByClassName("dataTable-search")[0]
+            // search.insertBefore(searchIcon, search.firstChild);
             var e = document.getElementById("loading");
             e.setAttribute('style', 'display: none;');
             var list = document.getElementById("tableContent");
