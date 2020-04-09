@@ -405,7 +405,9 @@ function getServerList(callback) {
         if (this.readyState === 4 && this.status === 200) {
             if (xhr.response == "Error") {
                 var chooseText = document.getElementById("textChooseServer");
-                errorMessage("There was a problem getting the server list.");
+                setError("There was a problem getting the server list.");
+                document.getElementById("textChooseServer").innerHTML = "There was a problem getting the server list.";
+                document.getElementById("textChooseServer").style.color = "red";
                 var e = document.getElementById("loading");
                 e.setAttribute('style', 'display: none;');
             } else {
