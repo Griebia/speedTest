@@ -2,8 +2,9 @@
 
 lua_State *stateL;
 sem_t mutex;
-struct testresults results[4];
-int threadCount = 4;
+int threadCount;
+struct testresults results[MAX_THREADS];
+
 
 //Libary of commands for lua to recognise.
 static const struct luaL_Reg mylib[] = {
@@ -18,14 +19,15 @@ static int testspeed_wrapper(lua_State *L)
   const char *url = lua_tostring(L, 1);
   int timetest = lua_tonumber(L, 2);
   int upload = lua_toboolean(L, 3);
-  int res = test_internet_speed(url, timetest, upload, L);
+  int thcount = lua_tonumber(L, 4);
+  int res = test_internet_speed(url, timetest, upload, L,threadCount);
   if (res > 0)
   {
     res = 0;
   }
   lua_pushboolean(L, res);
   lua_pushstring(L, url);
-  return 2;
+  return 3;
 }
 
 //Body get wrapper from a url.
@@ -88,7 +90,7 @@ void *write_results(void *input)
   
   while (startTime + 10*CLOCKS_PER_SEC > clock())
   {
-    if ((double)((clock() - lastWrite)/CLOCKS_PER_SEC) >= MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL)
+    if (((clock() - lastWrite)/(double)CLOCKS_PER_SEC) >= MINIMAL_PROGRESS_FUNCTIONALITY_INTERVAL)
     {
       lastWrite = clock();
 
@@ -165,6 +167,7 @@ static int call_back(void *p, curl_off_t dltotal, curl_off_t dlnow, curl_off_t u
     curl_off_t uploadSpeed;
     curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD_T, &downloadSpeed);
     curl_easy_getinfo(curl, CURLINFO_SPEED_UPLOAD_T, &uploadSpeed);
+
     for (size_t i = 0; i < threadCount; i++)
     {
       if (pthread_self() == results[i].tid)
@@ -249,7 +252,7 @@ void *test_thread(void *input)
 
     if (curtime < prog.testtime)
     {
-      test_internet_speed(link, prog.testtime - curtime, upload, L);
+      test_thread(input);
     }
   }
 
@@ -260,29 +263,37 @@ cleanup:
     fp = NULL;
   }
 
-  return (int)res;
+  return NULL;
 }
 
 //Tests the internet speed by the given link adn if it is a download or an upload.
-int test_internet_speed(const char *link, double testTime, int upload, lua_State *L)
+int test_internet_speed(const char *link, double testTime, int upload, lua_State *L, int thcount)
 {
+  if (threadCount == 0)
+  {
+    threadCount = (int)sysconf(_SC_NPROCESSORS_ONLN);
+  }
+  else{
+    threadCount = thcount;
+  }
+  
   struct testargs *args = (struct testargs *)malloc(sizeof(struct testargs));
 
   args->link = link;
   args->testTime = testTime;
   args->upload = upload;
   args->L = L;
-  int count = 4;
+
   pthread_t resultId;
   pthread_create(&resultId, NULL, write_results, L);
-  pthread_t tid[count];
-  for (int i = 0; i < count; i++)
+  pthread_t tid[threadCount];
+  for (int i = 0; i < threadCount; i++)
   {
     pthread_create(&tid[i], NULL, test_thread, (void *)args);
     results[i].tid = tid[i];
   }
   pthread_join(resultId, NULL);
-  for (int i = 0; i < count; i++)
+  for (int i = 0; i < threadCount; i++)
   {
     pthread_join(tid[i], NULL);
   }

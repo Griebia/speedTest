@@ -39,6 +39,8 @@
 #define CURL_OFF_T_MIN (-CURL_OFF_T_MAX - CURL_OFF_T_C(1))
 #endif
 
+#define MAX_THREADS 64
+
 struct string {
   char *ptr;
   size_t len;
@@ -70,7 +72,7 @@ static int testspeed_wrapper(lua_State *L);
 static int getbody_wrapper(lua_State *L);
 static int call_back(void *p,curl_off_t dltotal, curl_off_t dlnow,curl_off_t ultotal, curl_off_t ulnow);
 int luaopen_libspeedtest(lua_State *L);
-int test_internet_speed(const char *link, double testTime, int upload, lua_State *L);
+int test_internet_speed(const char *link, double testTime, int upload, lua_State *L, int thcount);
 const char* get_body(const char *link);
 void init_string(struct string *s);
 size_t write_string(void *ptr, size_t size, size_t nmemb, struct string *s);

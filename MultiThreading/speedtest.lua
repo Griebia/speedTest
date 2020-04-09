@@ -19,6 +19,7 @@ warning = nil
 error = nil
 state = "START"
 time = 10
+threads = 1;
 silent = false
 
 --Writes to JSON file all of the information
@@ -55,7 +56,6 @@ function writeToJSON(downloadSpeed, currentDownloaded,uploadSpeed,currentUpload)
 end
 
 writeToJSON(nil,nil,nil,nil)
-
 -- Gets the current ip addresses latitude and longitude.
 function getCurrentLocation()
     -- Getting the json file form https://api.myip.com with IP.
@@ -118,6 +118,7 @@ end
 --Trims the link by removing https:// or http:// and removing everything from the link that goes from / character.
 function trimLink(link)
     local cutlink = link
+    cutLink = link
     if(string.match(link,"//")) then 
         local i, j = string.find(link, "//")
         i = string.find(link, "\n")
@@ -211,7 +212,7 @@ function writeToConsole (downloadSpeed, currentDownloaded,uploadSpeed,currentUpl
     if tonumber(currentDownloaded) then
         if currentDownloaded > 0 then
             print("Average download speed is "..convertBytes(downloadSpeed,true).." Current downloaded "..convertBytes(currentDownloaded, false))
-        else
+        elseif currentUpload > 0 then
             print("Average upload speed is "..convertBytes(uploadSpeed,true).." Current uploaded "..convertBytes(currentUpload, false)) 
         end 
     end
@@ -224,15 +225,18 @@ function flagCheck(num,flag)
     local tmp = 0;
     if flag == "--help" then
         print("usage: speedtest [options]\nAvailible options are:\n--help      shows usage of file\n-s          set silent mode\n-u [url]    set server\n-t [time]    set test time\n")
+	    os.exit()
     elseif flag == "-s" then 
         silent = true;
     elseif flag == "-u" then
         server = arg[num+1]
         if server == nil then
-            warning = "The link was not set correctly"
+            error = "The link was not set correctly"
             writeData(nil,nil,nil,nil)
+            os.exit()
         end
         server = trimLink(server)
+        print(server)
         if socket.connect(server,80) == nil then
             error = "There was no connection to the given server"
             writeData(nil,nil,nil,nil)
@@ -246,12 +250,18 @@ function flagCheck(num,flag)
             warning = "The time was not set correctly"
             writeData(nil,nil,nil,nil)
         end
-    elseif flag == "-t" then
+    elseif flag == "-m" then
         if arg[num+1] ~= nil then
-            time = arg[num+1]
-            tmp = 1
+            threads = tonumber(arg[num+1])
+            if threads < 0 then
+                error = "The thread count was not set correctly"
+                writeData(nil,nil,nil,nil)
+                os.exit()
+            else
+                tmp = 1
+            end
         else
-            warning = "The time was not set correctly"
+            error = "The thread count was not set correctly"
             writeData(nil,nil,nil,nil)
         end
     else
@@ -268,8 +278,8 @@ function getServerList()
         if body == nil or body == "" then
             os.remove("/tmp/serverlist.xml")
             error = "Could not get the server list."
-            writeData(nil,nil,nil,nil);
-            os.exit();
+            writeData(nil,nil,nil,nil)
+            os.exit()
         end
         file:close()
     else
@@ -277,12 +287,13 @@ function getServerList()
         body = libspeedtest.getbody("https://c.speedtest.net/speedtest-servers-static.php")
         if body == nil or body == "" then
             error = "Could not get the server list."
-            writeData(nil,nil,nil,nil);
-            os.exit();
+            writeData(nil,nil,nil,nil)
+            os.exit()
         end
         file:write(body)
         file:close()
     end
+
     return body
 end
 
@@ -336,6 +347,8 @@ if(#arg > 0) then
 end
 
 --Looks for internet connection
+state = "CHECKING_CONNECTION"
+writeData(nil, nil, nil, nil)
 if not cheakConnection("www.google.com") then
     error = "Internet connection is required to use this application."
     writeData(nil, nil, nil, nil)
@@ -377,7 +390,7 @@ end
 
 state = "TESTING_DOWNLOAD"
 
-isError, res = libspeedtest.testspeed(server..":8080/download", time, false)
+isError, res = libspeedtest.testspeed(server..":8080/download", time, false, thread)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
@@ -386,10 +399,10 @@ end
 
 state = "COOLDOWN"
 writeToJSON(nil,nil,nil,nil)
-socket.sleep(3);
+socket.sleep(3.75);
 state = "TESTING_UPLOAD"
 
-isError, res = libspeedtest.testspeed(server..":8080/speedtest/upload.php", time, true)
+isError, res = libspeedtest.testspeed(server..":8080/speedtest/upload.php", time, true, thread)
 if isError then
     error = res
     writeData(nil,nil,nil,nil)
